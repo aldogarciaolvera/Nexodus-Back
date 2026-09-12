@@ -1,3 +1,9 @@
+## [0.0.2] - 2026-09-12
+
+### Features
+
+- feat: Base del Proyecto.
+
 # Changelog
 
 Todos los cambios relevantes de este proyecto se documentaran en este archivo.
