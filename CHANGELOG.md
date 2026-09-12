@@ -1,3 +1,9 @@
+## [0.0.3] - 2026-09-12
+
+### Changed
+
+- Preparacion de la version 0.0.3.
+
 ## [0.0.2] - 2026-09-12
 
 ### Features
