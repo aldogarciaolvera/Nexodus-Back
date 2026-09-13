@@ -30,6 +30,23 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   **Validación:** Integración transparente de `FluentValidation` antes de ejecutar la lógica de los controladores.
 *   **Módulo de Finanzas (CRUD Completo):** Endpoints para crear, leer, actualizar, eliminar y obtener resumen mensual de ingresos y gastos.
 
+### Endpoints Disponibles
+
+**Autenticación (`/api/auth`)**
+*   `POST /api/auth/register` - Registra un nuevo usuario.
+*   `POST /api/auth/login` - Inicia sesión y devuelve un token JWT y un Refresh Token.
+*   `POST /api/auth/refresh` - Renueva el token JWT utilizando un Refresh Token.
+*   `GET /api/protected` - Endpoint de prueba protegido (requiere autenticación).
+*   `GET /api/admin-only` - Endpoint de prueba protegido (requiere rol "Admin").
+
+**Finanzas (`/api/finances`)** *(Requieren Autenticación JWT)*
+*   `GET /api/finances/` - Obtiene todas las finanzas del usuario autenticado.
+*   `GET /api/finances/summary` - Obtiene el resumen mensual (Total de Ingresos, Gastos y Balance).
+*   `GET /api/finances/{id}` - Obtiene los detalles de una transacción financiera específica.
+*   `POST /api/finances/` - Crea una nueva transacción financiera (Ingreso/Gasto).
+*   `PUT /api/finances/{id}` - Actualiza una transacción financiera existente.
+*   `DELETE /api/finances/{id}` - Elimina una transacción financiera.
+
 ## Configuración y Ejecución
 
 1.  **Clonar y configurar el entorno:**
