@@ -11,3 +11,14 @@ obj/
 /wwwroot/node_modules
 
 # End of https://www.toptal.com/developers/gitignore/api/dotnetcore
+
+# Environment variables
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Sensitive settings
+appsettings.Development.json
+appsettings.Local.json
+*.secret.json
