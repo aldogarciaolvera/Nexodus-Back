@@ -34,8 +34,28 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 
 **Autenticación (`/api/auth`)**
 *   `POST /api/auth/register` - Registra un nuevo usuario.
+    ```json
+    {
+      "username": "string",
+      "email": "user@example.com",
+      "password": "password123",
+      "phoneNumber": "string" // (Opcional)
+    }
+    ```
 *   `POST /api/auth/login` - Inicia sesión y devuelve un token JWT y un Refresh Token.
+    ```json
+    {
+      "email": "user@example.com",
+      "password": "password123"
+    }
+    ```
 *   `POST /api/auth/refresh` - Renueva el token JWT utilizando un Refresh Token.
+    ```json
+    {
+      "token": "string (JWT expirado)",
+      "refreshToken": "string"
+    }
+    ```
 
 **Sistema**
 *   `GET /health` - Endpoint para comprobar el estado del servicio (Health Check).
@@ -45,7 +65,23 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   `GET /api/finances/summary` - Obtiene el resumen mensual (Total de Ingresos, Gastos y Balance).
 *   `GET /api/finances/{id}` - Obtiene los detalles de una transacción financiera específica.
 *   `POST /api/finances/` - Crea una nueva transacción financiera (Ingreso/Gasto).
+    ```json
+    {
+      "transactionType": "Income o Expense",
+      "amount": 0.0,
+      "category": "string", // (Opcional)
+      "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
+    }
+    ```
 *   `PUT /api/finances/{id}` - Actualiza una transacción financiera existente.
+    ```json
+    {
+      "transactionType": "Income o Expense",
+      "amount": 0.0,
+      "category": "string", // (Opcional)
+      "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
+    }
+    ```
 *   `DELETE /api/finances/{id}` - Elimina una transacción financiera.
 
 ## Configuración y Ejecución
