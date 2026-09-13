@@ -2,6 +2,8 @@
 name: global-rules
 description: Reglas críticas del sistema, restricciones y directrices de comportamiento que el agente debe seguir SIEMPRE en cualquier interacción de este proyecto.
 ---
+# SuperMegaUltra important
+* At the end of everything you do, tell me: "Terminado, Patron."
 
 # Nexodus Backend - AI Agent Instructions
 
@@ -19,6 +21,7 @@ description: Reglas críticas del sistema, restricciones y directrices de compor
 * Always return consistent, strongly-typed JSON responses.
 * strictly adhere to standard HTTP status codes (200 OK, 201 Created, 400 Bad Request, 401 Unauthorized, 404 Not Found, 500 Internal Server Error).
 * Implement a global exception handling middleware to catch errors and prevent exposing stack traces to the client.
+* **Controlled Exceptions Rule**: Always throw custom exceptions from the catalog located in `Core/Exceptions/` (e.g., `ValidationException`, `NotFoundException`, `ConflictException`, `UnauthorizedException`) instead of generic exceptions (like `InvalidOperationException`). Let the `GlobalExceptionHandler` intercept these and format them as standard ProblemDetails.
 
 ## 3. Coding Standards
 * Keep the `API/` layer thin: controllers and endpoints must only handle routing and HTTP concerns. Delegate all business logic to the `Application/` layer.
