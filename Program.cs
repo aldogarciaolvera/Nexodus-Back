@@ -60,8 +60,8 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+// if (app.Environment.IsDevelopment())
+// {
     app.MapOpenApi();
     app.MapScalarApiReference("", options =>
     {
@@ -69,11 +69,10 @@ if (app.Environment.IsDevelopment())
         options.HideModels = true;
         options.HideDarkModeToggle = true;
     });
-}
+// }
 
 app.UseExceptionHandler();
 
-//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
