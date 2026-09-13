@@ -52,14 +52,6 @@ public static class AuthEndpoints
             return Results.Ok(response);
         });
 
-        // Protected test endpoint
-        app.MapGet("/api/protected", () => Results.Ok(new { Message = "You are authenticated!" }))
-            .RequireAuthorization()
-            .WithTags("Test");
-            
-        // Admin only test endpoint
-        app.MapGet("/api/admin-only", () => Results.Ok(new { Message = "You are an admin!" }))
-            .RequireAuthorization(policy => policy.RequireRole("Admin"))
-            .WithTags("Test");
+
     }
 }

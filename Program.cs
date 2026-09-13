@@ -79,4 +79,7 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapFinanceEndpoints();
 
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = System.DateTime.UtcNow }))
+    .WithTags("System");
+
 app.Run();

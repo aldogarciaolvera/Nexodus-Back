@@ -36,8 +36,9 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   `POST /api/auth/register` - Registra un nuevo usuario.
 *   `POST /api/auth/login` - Inicia sesión y devuelve un token JWT y un Refresh Token.
 *   `POST /api/auth/refresh` - Renueva el token JWT utilizando un Refresh Token.
-*   `GET /api/protected` - Endpoint de prueba protegido (requiere autenticación).
-*   `GET /api/admin-only` - Endpoint de prueba protegido (requiere rol "Admin").
+
+**Sistema**
+*   `GET /health` - Endpoint para comprobar el estado del servicio (Health Check).
 
 **Finanzas (`/api/finances`)** *(Requieren Autenticación JWT)*
 *   `GET /api/finances/` - Obtiene todas las finanzas del usuario autenticado.
