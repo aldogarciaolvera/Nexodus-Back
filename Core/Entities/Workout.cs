@@ -4,8 +4,8 @@ namespace Nexodus_Back.Core.Entities;
 
 public class Workout
 {
-    public long Id { get; set; }
-    public long UserId { get; set; }
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
     public string WorkoutType { get; set; } = string.Empty;
     public int? Duration { get; set; }
     public int? CaloriesBurned { get; set; }

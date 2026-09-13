@@ -4,8 +4,8 @@ namespace Nexodus_Back.Core.Entities;
 
 public class TodoList
 {
-    public long Id { get; set; }
-    public long UserId { get; set; }
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
     public string Task { get; set; } = string.Empty;
     public bool IsCompleted { get; set; }
     public DateTime? DueDate { get; set; }

@@ -1,8 +1,8 @@
 using System;
 
-namespace Nexodus_Back.Core.Entities;
+namespace Nexodus_Back.Application.DTOs.Finance;
 
-public class Finance
+public class FinanceDto
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
@@ -11,7 +11,4 @@ public class Finance
     public string? Category { get; set; }
     public DateTime TransactionDate { get; set; }
     public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
-
-    public User? User { get; set; }
 }

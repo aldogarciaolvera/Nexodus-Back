@@ -25,6 +25,11 @@ public class UserRepository : IUserRepository
         return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
     }
 
+    public async Task<User?> GetByIdAsync(Guid id)
+    {
+        return await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+    }
+
     public async Task<User> AddAsync(User user)
     {
         _context.Users.Add(user);
