@@ -8,6 +8,7 @@ RUN dotnet publish -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
+ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 # Asegurate de que el nombre del DLL coincida con el nombre de tu proyecto
 ENTRYPOINT ["dotnet", "Nexodus-Back.dll"]
