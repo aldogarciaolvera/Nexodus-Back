@@ -22,6 +22,7 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
+        request.Email = request.Email?.ToLowerInvariant() ?? string.Empty;
         var existingUser = await _userRepository.GetByEmailAsync(request.Email) ?? await _userRepository.GetByUsernameAsync(request.Username);
         
         if (existingUser != null)
@@ -47,6 +48,7 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
+        request.Email = request.Email?.ToLowerInvariant() ?? string.Empty;
         var user = await _userRepository.GetByEmailAsync(request.Email);
         
         if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))

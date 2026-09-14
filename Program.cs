@@ -13,6 +13,7 @@ using Nexodus_Back.API.Endpoints;
 using Nexodus_Back.API.Middleware;
 using FluentValidation;
 using Nexodus_Back.Application.Validators;
+using Nexodus_Back.Application.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +53,8 @@ builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFinanceRepository, FinanceRepository>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -78,6 +81,7 @@ app.UseAuthorization();
 
 app.MapAuthEndpoints();
 app.MapFinanceEndpoints();
+app.MapCategoryEndpoints();
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = System.DateTime.UtcNow }))
     .WithTags("System");

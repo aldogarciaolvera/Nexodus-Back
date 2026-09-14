@@ -29,6 +29,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   **Manejo Global de Excepciones:** Middleware interceptor (`GlobalExceptionHandler`) para convertir excepciones personalizadas (`ValidationException`, `NotFoundException`, `UnauthorizedException`, etc.) en respuestas HTTP estandarizadas `ProblemDetails`.
 *   **Validación:** Integración transparente de `FluentValidation` antes de ejecutar la lógica de los controladores.
 *   **Módulo de Finanzas (CRUD Completo):** Endpoints para crear, leer, actualizar, eliminar y obtener resumen mensual de ingresos y gastos.
+*   **Módulo de Categorías (CRUD):** Categorías personalizadas por usuario para uso en transacciones financieras.
 
 ### Endpoints Disponibles
 
@@ -69,7 +70,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     {
       "transactionType": "Income o Expense",
       "amount": 0.0,
-      "category": "string", // (Opcional)
+      "categoryId": "string (UUID)", // (Opcional)
       "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
     }
     ```
@@ -78,11 +79,30 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     {
       "transactionType": "Income o Expense",
       "amount": 0.0,
-      "category": "string", // (Opcional)
+      "categoryId": "string (UUID)", // (Opcional)
       "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
     }
     ```
 *   `DELETE /api/finances/{id}` - Elimina una transacción financiera.
+
+**Categorías (`/api/categories`)** *(Requieren Autenticación JWT)*
+*   `GET /api/categories/` - Obtiene todas las categorías del usuario.
+*   `GET /api/categories/{id}` - Obtiene los detalles de una categoría específica.
+*   `POST /api/categories/` - Crea una nueva categoría.
+    ```json
+    {
+      "name": "string",
+      "description": "string" // (Opcional)
+    }
+    ```
+*   `PUT /api/categories/{id}` - Actualiza una categoría existente.
+    ```json
+    {
+      "name": "string",
+      "description": "string" // (Opcional)
+    }
+    ```
+*   `DELETE /api/categories/{id}` - Elimina una categoría.
 
 ## Configuración y Ejecución
 

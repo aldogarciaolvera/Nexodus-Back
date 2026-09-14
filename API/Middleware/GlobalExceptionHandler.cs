@@ -16,47 +16,46 @@ public class GlobalExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        var problemDetails = new ProblemDetails
+        var statusCode = StatusCodes.Status500InternalServerError;
+        var errorContent = new Dictionary<string, object>
         {
-            Instance = httpContext.Request.Path
+            { "message", "An unexpected error occurred." },
+            { "endpoint", httpContext.GetEndpoint()?.DisplayName ?? httpContext.Request.Path.Value ?? "Unknown" }
         };
 
         if (exception is ValidationException validationException)
         {
-            problemDetails.Title = "Validation Error";
-            problemDetails.Status = StatusCodes.Status400BadRequest;
-            problemDetails.Detail = validationException.Message;
-            problemDetails.Extensions["errors"] = validationException.Errors;
+            statusCode = StatusCodes.Status400BadRequest;
+            errorContent["message"] = validationException.Message;
+            errorContent["errors"] = validationException.Errors;
         }
         else if (exception is NotFoundException notFoundException)
         {
-            problemDetails.Title = "Resource Not Found";
-            problemDetails.Status = StatusCodes.Status404NotFound;
-            problemDetails.Detail = notFoundException.Message;
+            statusCode = StatusCodes.Status404NotFound;
+            errorContent["message"] = notFoundException.Message;
         }
         else if (exception is ConflictException conflictException)
         {
-            problemDetails.Title = "Conflict";
-            problemDetails.Status = StatusCodes.Status409Conflict;
-            problemDetails.Detail = conflictException.Message;
+            statusCode = StatusCodes.Status409Conflict;
+            errorContent["message"] = conflictException.Message;
         }
         else if (exception is UnauthorizedException unauthorizedException)
         {
-            problemDetails.Title = "Unauthorized";
-            problemDetails.Status = StatusCodes.Status401Unauthorized;
-            problemDetails.Detail = unauthorizedException.Message;
+            statusCode = StatusCodes.Status401Unauthorized;
+            errorContent["message"] = unauthorizedException.Message;
         }
-        else
+        else 
         {
-            problemDetails.Title = "Internal Server Error";
-            problemDetails.Status = StatusCodes.Status500InternalServerError;
-            problemDetails.Detail = "An unexpected error occurred.";
+            // Opcionalmente podrías incluir el mensaje real de la excepción aquí si se desea en entorno de desarrollo.
+            errorContent["message"] = exception.Message;
         }
 
-        httpContext.Response.StatusCode = problemDetails.Status.Value;
+        var apiResponse = Nexodus_Back.Application.DTOs.Common.ApiResponse<object>.Error(errorContent, statusCode);
+
+        httpContext.Response.StatusCode = statusCode;
 
         await httpContext.Response
-            .WriteAsJsonAsync(problemDetails, cancellationToken);
+            .WriteAsJsonAsync(apiResponse, cancellationToken);
 
         return true;
     }

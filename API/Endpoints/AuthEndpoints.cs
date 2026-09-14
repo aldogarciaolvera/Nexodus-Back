@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Nexodus_Back.Application.DTOs.Auth;
+using Nexodus_Back.Application.DTOs.Common;
 using Nexodus_Back.Application.Services;
 using FluentValidation;
 using Nexodus_Back.Core.Exceptions;
@@ -28,7 +29,7 @@ public static class AuthEndpoints
             }
 
             var response = await authService.RegisterAsync(request);
-            return Results.Ok(response);
+            return Results.Ok(ApiResponse<AuthResponse>.Success(response));
         });
 
         group.MapPost("/login", async (LoginRequest request, IAuthService authService, IValidator<LoginRequest> validator) =>
@@ -43,13 +44,13 @@ public static class AuthEndpoints
             }
 
             var response = await authService.LoginAsync(request);
-            return Results.Ok(response);
+            return Results.Ok(ApiResponse<AuthResponse>.Success(response));
         });
 
         group.MapPost("/refresh", async (RefreshTokenRequest request, IAuthService authService) =>
         {
             var response = await authService.RefreshTokenAsync(request);
-            return Results.Ok(response);
+            return Results.Ok(ApiResponse<AuthResponse>.Success(response));
         });
 
 

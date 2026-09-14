@@ -1,0 +1,103 @@
+# --- Auth Endpoints ---
+
+# Register
+curl -X POST http://localhost:5079/api/auth/register \
+-H "Content-Type: application/json" \
+-d '{
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "Password123!",
+  "phoneNumber": "1234567890"
+}'
+
+# Login
+curl -X POST http://localhost:5079/api/auth/login \
+-H "Content-Type: application/json" \
+-d '{
+  "email": "test@example.com",
+  "password": "Password123!"
+}'
+
+# Refresh Token
+curl -X POST http://localhost:5079/api/auth/refresh \
+-H "Content-Type: application/json" \
+-d '{
+  "token": "YOUR_EXPIRED_JWT_TOKEN",
+  "refreshToken": "YOUR_REFRESH_TOKEN"
+}'
+
+# --- System Endpoints ---
+
+# Health Check
+curl -X GET http://localhost:5079/health
+
+
+# --- Finances Endpoints ---
+# IMPORTANT: Replace YOUR_JWT_TOKEN with a valid token obtained from the Login endpoint.
+
+# Get All Finances
+curl -X GET http://localhost:5079/api/finances/ \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get Finances Summary
+curl -X GET http://localhost:5079/api/finances/summary \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get Finance by ID
+# Replace YOUR_TRANSACTION_ID with a valid GUID
+curl -X GET http://localhost:5079/api/finances/YOUR_TRANSACTION_ID \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Create Finance Transaction
+curl -X POST http://localhost:5079/api/finances/ \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer YOUR_JWT_TOKEN" \
+-d '{
+  "transactionType": "Income",
+  "amount": 1500.50,
+  "category": "Salary",
+  "transactionDate": "2026-03-15T12:00:00Z"
+}'
+
+# Update Finance Transaction
+# Replace YOUR_TRANSACTION_ID with a valid GUID
+curl -X PUT http://localhost:5079/api/finances/YOUR_TRANSACTION_ID \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer YOUR_JWT_TOKEN" \
+-d '{
+  "transactionType": "Expense",
+  "amount": 50.00,
+  "category": "Groceries",
+  "transactionDate": "2026-03-16T15:30:00Z"
+}'
+
+# Delete Finance Transaction
+# Replace YOUR_TRANSACTION_ID with a valid GUID
+curl -X DELETE http://localhost:5079/api/finances/YOUR_TRANSACTION_ID \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+### CATEGORIES ###
+
+# Create Category
+curl -X POST http://localhost:5033/api/categories 
+-H "Content-Type: application/json" 
+-H "Authorization: Bearer <TOKEN>" 
+-d '{"name": "Food", "description": "Groceries and dining out"}'
+
+# Get All Categories
+curl -X GET http://localhost:5033/api/categories 
+-H "Authorization: Bearer <TOKEN>"
+
+# Get Category by ID
+curl -X GET http://localhost:5033/api/categories/<CATEGORY_ID> 
+-H "Authorization: Bearer <TOKEN>"
+
+# Update Category
+curl -X PUT http://localhost:5033/api/categories/<CATEGORY_ID> 
+-H "Content-Type: application/json" 
+-H "Authorization: Bearer <TOKEN>" 
+-d '{"name": "Food & Dining", "description": "All food expenses"}'
+
+# Delete Category
+curl -X DELETE http://localhost:5033/api/categories/<CATEGORY_ID> 
+-H "Authorization: Bearer <TOKEN>"
