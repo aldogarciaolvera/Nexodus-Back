@@ -32,6 +32,7 @@ public class CategoryService : ICategoryService
             UserId = userId,
             Name = request.Name,
             Description = request.Description,
+            MonthlyLimit = request.MonthlyLimit,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -90,6 +91,7 @@ public class CategoryService : ICategoryService
 
         category.Name = request.Name;
         category.Description = request.Description;
+        category.MonthlyLimit = request.MonthlyLimit;
         category.UpdatedAt = DateTime.UtcNow;
 
         await _categoryRepository.UpdateAsync(category);
@@ -122,6 +124,7 @@ public class CategoryService : ICategoryService
             UserId = category.UserId,
             Name = category.Name,
             Description = category.Description,
+            MonthlyLimit = category.MonthlyLimit,
             CreatedAt = category.CreatedAt
         };
     }

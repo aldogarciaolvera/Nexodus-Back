@@ -92,14 +92,16 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```json
     {
       "name": "string",
-      "description": "string" // (Opcional)
+      "description": "string", // (Opcional)
+      "monthlyLimit": 0.0 // (Opcional)
     }
     ```
 *   `PUT /api/categories/{id}` - Actualiza una categoría existente.
     ```json
     {
       "name": "string",
-      "description": "string" // (Opcional)
+      "description": "string", // (Opcional)
+      "monthlyLimit": 0.0 // (Opcional)
     }
     ```
 *   `DELETE /api/categories/{id}` - Elimina una categoría.

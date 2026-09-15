@@ -44,6 +44,7 @@ CREATE TABLE categories (
   user_id UUID REFERENCES "Users"("Id"),
   name text not null,
   description text,
+  MonthlyLimit NUMERIC(10, 2),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

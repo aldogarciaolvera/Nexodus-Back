@@ -82,22 +82,22 @@ curl -X DELETE http://localhost:5079/api/finances/YOUR_TRANSACTION_ID \
 curl -X POST http://localhost:5033/api/categories 
 -H "Content-Type: application/json" 
 -H "Authorization: Bearer <TOKEN>" 
--d '{"name": "Food", "description": "Groceries and dining out"}'
+-d '{"name": "Food", "description": "Groceries and dining out", "monthlyLimit": 500.00}'
 
 # Get All Categories
 curl -X GET http://localhost:5033/api/categories 
 -H "Authorization: Bearer <TOKEN>"
 
 # Get Category by ID
-curl -X GET http://localhost:5033/api/categories/<CATEGORY_ID> 
+curl -X GET http://localhost:5033/api/categories/CATEGORY_ID
 -H "Authorization: Bearer <TOKEN>"
 
 # Update Category
-curl -X PUT http://localhost:5033/api/categories/<CATEGORY_ID> 
+curl -X PUT http://localhost:5033/api/categories/CATEGORY_ID
 -H "Content-Type: application/json" 
 -H "Authorization: Bearer <TOKEN>" 
--d '{"name": "Food & Dining", "description": "All food expenses"}'
+-d '{"name": "Food & Dining", "description": "All food expenses", "monthlyLimit": 600.00}'
 
 # Delete Category
-curl -X DELETE http://localhost:5033/api/categories/<CATEGORY_ID> 
+curl -X DELETE http://localhost:5033/api/categories/CATEGORY_ID
 -H "Authorization: Bearer <TOKEN>"
