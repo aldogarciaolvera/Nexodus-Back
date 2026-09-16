@@ -1,3 +1,10 @@
+## [0.0.6] - 2026-09-16
+
+### Features
+
+- feat: limite mensual
+- feat: Modificacion de respuesta de endpoint
+
 ## [0.0.5] - 2026-09-13
 
 ### Changed
