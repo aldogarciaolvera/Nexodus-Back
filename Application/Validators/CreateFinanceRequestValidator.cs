@@ -8,11 +8,11 @@ public class CreateFinanceRequestValidator : AbstractValidator<CreateFinanceRequ
     public CreateFinanceRequestValidator()
     {
         RuleFor(x => x.Amount)
-            .GreaterThan(0).WithMessage("Amount must be greater than zero.");
+            .GreaterThan(0).WithMessage("El monto debe ser mayor a cero.");
 
         RuleFor(x => x.TransactionType)
-            .NotEmpty().WithMessage("TransactionType is required.")
+            .NotEmpty().WithMessage("El tipo de transacción es obligatorio.")
             .Must(t => t == "Ingreso" || t == "Gasto")
-            .WithMessage("TransactionType must be either 'Ingreso' or 'Gasto'.");
+            .WithMessage("El tipo de transacción debe ser 'Ingreso' o 'Gasto'.");
     }
 }

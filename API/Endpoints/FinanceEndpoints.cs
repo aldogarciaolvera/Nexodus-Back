@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Nexodus_Back.Application.DTOs.Finance;
+using Nexodus_Back.Application.DTOs.Common;
 using Nexodus_Back.Application.Services;
 
 namespace Nexodus_Back.API.Endpoints;
@@ -31,31 +32,39 @@ public static class FinanceEndpoints
                 throw new Core.Exceptions.ValidationException(errors);
             }
 
-            var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var userId))
+                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
             var result = await financeService.CreateAsync(userId, request);
             
-            return Results.Created($"/api/finances/{result.Id}", result);
+            return Results.Created($"/api/finances/{result.Id}", ApiResponse<FinanceDto>.Success(result, 201));
         });
 
         group.MapGet("/", async (IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var userId))
+                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
             var finances = await financeService.GetAllByUserIdAsync(userId);
-            return Results.Ok(finances);
+            return Results.Ok(ApiResponse<IEnumerable<FinanceDto>>.Success(finances));
         });
 
         group.MapGet("/summary", async (IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var userId))
+                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
             var summary = await financeService.GetSummaryAsync(userId);
-            return Results.Ok(summary);
+            return Results.Ok(ApiResponse<FinanceSummaryDto>.Success(summary));
         });
 
         group.MapGet("/{id}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var userId))
+                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
             var finance = await financeService.GetByIdAsync(userId, id);
-            return Results.Ok(finance);
+            return Results.Ok(ApiResponse<FinanceDto>.Success(finance));
         });
 
         group.MapPut("/{id}", async (
@@ -74,18 +83,22 @@ public static class FinanceEndpoints
                 throw new Core.Exceptions.ValidationException(errors);
             }
 
-            var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var userId))
+                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
             var result = await financeService.UpdateAsync(userId, id, request);
             
-            return Results.Ok(result);
+            return Results.Ok(ApiResponse<FinanceDto>.Success(result));
         });
 
         group.MapDelete("/{id}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var userId))
+                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
             await financeService.DeleteAsync(userId, id);
             
-            return Results.NoContent();
+            return Results.Ok(ApiResponse<string>.Success("Registro eliminado"));
         });
     }
 }

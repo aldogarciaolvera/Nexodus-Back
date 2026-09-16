@@ -8,19 +8,19 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
     public RegisterRequestValidator()
     {
         RuleFor(x => x.Username)
-            .NotEmpty().WithMessage("Username is required.")
-            .MinimumLength(3).WithMessage("Username must be at least 3 characters long.");
+            .NotEmpty().WithMessage("El nombre de usuario es obligatorio.")
+            .MinimumLength(3).WithMessage("El nombre de usuario debe tener al menos 3 caracteres.");
 
         RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("Email is required.")
-            .EmailAddress().WithMessage("Email must be a valid email address format.");
+            .NotEmpty().WithMessage("El correo es obligatorio.")
+            .EmailAddress().WithMessage("El correo es inválido.");
 
         RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required.")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters long.")
-            .Matches("[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
-            .Matches("[a-z]").WithMessage("Password must contain at least one lowercase letter.")
-            .Matches("[0-9]").WithMessage("Password must contain at least one number.")
-            .Matches("[^a-zA-Z0-9]").WithMessage("Password must contain at least one special character.");
+            .NotEmpty().WithMessage("La contraseña es obligatoria.")
+            .MinimumLength(8).WithMessage("La contraseña debe tener al menos 8 caracteres.")
+            .Matches("[A-Z]").WithMessage("La contraseña debe contener al menos una letra mayúscula.")
+            .Matches("[a-z]").WithMessage("La contraseña debe contener al menos una letra minúscula.")
+            .Matches("[0-9]").WithMessage("La contraseña debe contener al menos un número.")
+            .Matches("[^a-zA-Z0-9]").WithMessage("La contraseña debe contener al menos un carácter especial.");
     }
 }

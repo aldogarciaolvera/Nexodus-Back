@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Nexodus_Back.Application.DTOs.Auth;
+using Nexodus_Back.Application.DTOs.Common;
 using Nexodus_Back.Application.Services;
 using FluentValidation;
 using Nexodus_Back.Core.Exceptions;
@@ -28,7 +29,7 @@ public static class AuthEndpoints
             }
 
             var response = await authService.RegisterAsync(request);
-            return Results.Ok(response);
+            return Results.Ok(ApiResponse<AuthResponse>.Success(response));
         });
 
         group.MapPost("/login", async (LoginRequest request, IAuthService authService, IValidator<LoginRequest> validator) =>
@@ -43,23 +44,15 @@ public static class AuthEndpoints
             }
 
             var response = await authService.LoginAsync(request);
-            return Results.Ok(response);
+            return Results.Ok(ApiResponse<AuthResponse>.Success(response));
         });
 
         group.MapPost("/refresh", async (RefreshTokenRequest request, IAuthService authService) =>
         {
             var response = await authService.RefreshTokenAsync(request);
-            return Results.Ok(response);
+            return Results.Ok(ApiResponse<AuthResponse>.Success(response));
         });
 
-        // Protected test endpoint
-        app.MapGet("/api/protected", () => Results.Ok(new { Message = "You are authenticated!" }))
-            .RequireAuthorization()
-            .WithTags("Test");
-            
-        // Admin only test endpoint
-        app.MapGet("/api/admin-only", () => Results.Ok(new { Message = "You are an admin!" }))
-            .RequireAuthorization(policy => policy.RequireRole("Admin"))
-            .WithTags("Test");
+
     }
 }

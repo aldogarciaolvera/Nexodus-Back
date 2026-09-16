@@ -29,23 +29,93 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   **Manejo Global de Excepciones:** Middleware interceptor (`GlobalExceptionHandler`) para convertir excepciones personalizadas (`ValidationException`, `NotFoundException`, `UnauthorizedException`, etc.) en respuestas HTTP estandarizadas `ProblemDetails`.
 *   **Validación:** Integración transparente de `FluentValidation` antes de ejecutar la lógica de los controladores.
 *   **Módulo de Finanzas (CRUD Completo):** Endpoints para crear, leer, actualizar, eliminar y obtener resumen mensual de ingresos y gastos.
+*   **Módulo de Categorías (CRUD):** Categorías personalizadas por usuario para uso en transacciones financieras.
 
 ### Endpoints Disponibles
 
 **Autenticación (`/api/auth`)**
 *   `POST /api/auth/register` - Registra un nuevo usuario.
+    ```json
+    {
+      "username": "string",
+      "email": "user@example.com",
+      "password": "password123",
+      "phoneNumber": "string" // (Opcional)
+    }
+    ```
 *   `POST /api/auth/login` - Inicia sesión y devuelve un token JWT y un Refresh Token.
+    ```json
+    {
+      "email": "user@example.com",
+      "password": "password123"
+    }
+    ```
 *   `POST /api/auth/refresh` - Renueva el token JWT utilizando un Refresh Token.
-*   `GET /api/protected` - Endpoint de prueba protegido (requiere autenticación).
-*   `GET /api/admin-only` - Endpoint de prueba protegido (requiere rol "Admin").
+    ```json
+    {
+      "token": "string (JWT expirado)",
+      "refreshToken": "string"
+    }
+    ```
+
+**Usuario (`/api/user`)** *(Requiere Autenticación JWT)*
+*   `GET /api/user/me` - Obtiene los datos del usuario autenticado (nombre, email, teléfono).
+*   `PUT /api/user/me` - Actualiza los datos del usuario autenticado.
+    ```json
+    {
+      "username": "newUsername",
+      "email": "new@example.com",
+      "phoneNumber": "0987654321" // (Opcional)
+    }
+    ```
+
+**Sistema**
+*   `GET /health` - Endpoint para comprobar el estado del servicio (Health Check).
 
 **Finanzas (`/api/finances`)** *(Requieren Autenticación JWT)*
 *   `GET /api/finances/` - Obtiene todas las finanzas del usuario autenticado.
 *   `GET /api/finances/summary` - Obtiene el resumen mensual (Total de Ingresos, Gastos y Balance).
 *   `GET /api/finances/{id}` - Obtiene los detalles de una transacción financiera específica.
 *   `POST /api/finances/` - Crea una nueva transacción financiera (Ingreso/Gasto).
+    ```json
+    {
+      "transactionType": "Income o Expense",
+      "amount": 0.0,
+      "categoryId": "string (UUID)", // (Opcional)
+      "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
+    }
+    ```
 *   `PUT /api/finances/{id}` - Actualiza una transacción financiera existente.
+    ```json
+    {
+      "transactionType": "Income o Expense",
+      "amount": 0.0,
+      "categoryId": "string (UUID)", // (Opcional)
+      "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
+    }
+    ```
 *   `DELETE /api/finances/{id}` - Elimina una transacción financiera.
+
+**Categorías (`/api/categories`)** *(Requieren Autenticación JWT)*
+*   `GET /api/categories/` - Obtiene todas las categorías del usuario.
+*   `GET /api/categories/{id}` - Obtiene los detalles de una categoría específica.
+*   `POST /api/categories/` - Crea una nueva categoría.
+    ```json
+    {
+      "name": "string",
+      "description": "string", // (Opcional)
+      "monthlyLimit": 0.0 // (Opcional)
+    }
+    ```
+*   `PUT /api/categories/{id}` - Actualiza una categoría existente.
+    ```json
+    {
+      "name": "string",
+      "description": "string", // (Opcional)
+      "monthlyLimit": 0.0 // (Opcional)
+    }
+    ```
+*   `DELETE /api/categories/{id}` - Elimina una categoría.
 
 ## Configuración y Ejecución
 

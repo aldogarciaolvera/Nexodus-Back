@@ -12,4 +12,5 @@ public interface IUserRepository
     Task<RefreshToken?> GetRefreshTokenAsync(string token);
     Task UpdateRefreshTokenAsync(RefreshToken token);
     Task<User?> GetByIdAsync(Guid id);
+    Task UpdateAsync(User user);
 }
