@@ -58,6 +58,17 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     }
     ```
 
+**Usuario (`/api/user`)** *(Requiere Autenticación JWT)*
+*   `GET /api/user/me` - Obtiene los datos del usuario autenticado (nombre, email, teléfono).
+*   `PUT /api/user/me` - Actualiza los datos del usuario autenticado.
+    ```json
+    {
+      "username": "newUsername",
+      "email": "new@example.com",
+      "phoneNumber": "0987654321" // (Opcional)
+    }
+    ```
+
 **Sistema**
 *   `GET /health` - Endpoint para comprobar el estado del servicio (Health Check).
 

@@ -27,7 +27,7 @@ public class AuthService : IAuthService
         
         if (existingUser != null)
         {
-            throw new ConflictException("User already exists.");
+            throw new ConflictException("El usuario ya existe.");
         }
 
         var user = new User
@@ -53,7 +53,7 @@ public class AuthService : IAuthService
         
         if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
-            throw new UnauthorizedException("Invalid email or password.");
+            throw new UnauthorizedException("Correo o contraseña inválidos.");
         }
 
         return await GenerateAuthResponse(user);
@@ -65,7 +65,7 @@ public class AuthService : IAuthService
 
         if (refreshToken == null || refreshToken.Invalidated || refreshToken.Used || refreshToken.ExpiryDate < DateTime.UtcNow)
         {
-            throw new UnauthorizedException("Invalid refresh token.");
+            throw new UnauthorizedException("Refresh token inválido.");
         }
 
         refreshToken.Used = true;
@@ -73,7 +73,7 @@ public class AuthService : IAuthService
 
         if (refreshToken.User == null)
         {
-             throw new UnauthorizedException("User not found.");
+             throw new UnauthorizedException("Usuario no encontrado.");
         }
 
         return await GenerateAuthResponse(refreshToken.User);

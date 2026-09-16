@@ -24,7 +24,7 @@ public class CategoryService : ICategoryService
         var existingCategory = await _categoryRepository.GetByNameAsync(userId, request.Name);
         if (existingCategory != null)
         {
-            throw new ConflictException($"Category with name '{request.Name}' already exists.");
+            throw new ConflictException($"La categoría con el nombre '{request.Name}' ya existe.");
         }
 
         var category = new Category
@@ -48,12 +48,12 @@ public class CategoryService : ICategoryService
 
         if (category == null)
         {
-            throw new NotFoundException($"Category with id {id} not found.");
+            throw new NotFoundException($"Categoría con id {id} no encontrada.");
         }
 
         if (category.UserId != userId)
         {
-            throw new UnauthorizedException("You are not authorized to access this record.");
+            throw new UnauthorizedException("No estás autorizado para acceder a este registro.");
         }
 
         return MapToDto(category);
@@ -71,12 +71,12 @@ public class CategoryService : ICategoryService
 
         if (category == null)
         {
-            throw new NotFoundException($"Category with id {id} not found.");
+            throw new NotFoundException($"Categoría con id {id} no encontrada.");
         }
 
         if (category.UserId != userId)
         {
-            throw new UnauthorizedException("You are not authorized to modify this record.");
+            throw new UnauthorizedException("No estás autorizado para modificar este registro.");
         }
 
         // Si cambia el nombre, validar que no exista
@@ -85,7 +85,7 @@ public class CategoryService : ICategoryService
             var existingCategory = await _categoryRepository.GetByNameAsync(userId, request.Name);
             if (existingCategory != null)
             {
-                throw new ConflictException($"Category with name '{request.Name}' already exists.");
+                throw new ConflictException($"La categoría con el nombre '{request.Name}' ya existe.");
             }
         }
 
@@ -105,12 +105,12 @@ public class CategoryService : ICategoryService
 
         if (category == null)
         {
-            throw new NotFoundException($"Category with id {id} not found.");
+            throw new NotFoundException($"Categoría con id {id} no encontrada.");
         }
 
         if (category.UserId != userId)
         {
-            throw new UnauthorizedException("You are not authorized to delete this record.");
+            throw new UnauthorizedException("No estás autorizado para eliminar este registro.");
         }
 
         await _categoryRepository.DeleteAsync(category);

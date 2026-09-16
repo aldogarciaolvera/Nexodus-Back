@@ -51,6 +51,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFinanceRepository, FinanceRepository>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
@@ -82,6 +83,7 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapFinanceEndpoints();
 app.MapCategoryEndpoints();
+app.MapUserEndpoints();
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = System.DateTime.UtcNow }))
     .WithTags("System");

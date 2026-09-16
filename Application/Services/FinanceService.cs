@@ -42,12 +42,12 @@ public class FinanceService : IFinanceService
 
         if (finance == null)
         {
-            throw new NotFoundException($"Finance record with id {id} not found.");
+            throw new NotFoundException($"Registro financiero con id {id} no encontrado.");
         }
 
         if (finance.UserId != userId)
         {
-            throw new UnauthorizedException("You are not authorized to access this record.");
+            throw new UnauthorizedException("No estás autorizado para acceder a este registro.");
         }
 
         return MapToDto(finance);
@@ -79,12 +79,12 @@ public class FinanceService : IFinanceService
 
         if (finance == null)
         {
-            throw new NotFoundException($"Finance record with id {id} not found.");
+            throw new NotFoundException($"Registro financiero con id {id} no encontrado.");
         }
 
         if (finance.UserId != userId)
         {
-            throw new UnauthorizedException("You are not authorized to modify this record.");
+            throw new UnauthorizedException("No estás autorizado para modificar este registro.");
         }
 
         finance.TransactionType = request.TransactionType;
@@ -107,12 +107,12 @@ public class FinanceService : IFinanceService
 
         if (finance == null)
         {
-            throw new NotFoundException($"Finance record with id {id} not found.");
+            throw new NotFoundException($"Registro financiero con id {id} no encontrado.");
         }
 
         if (finance.UserId != userId)
         {
-            throw new UnauthorizedException("You are not authorized to delete this record.");
+            throw new UnauthorizedException("No estás autorizado para eliminar este registro.");
         }
 
         await _financeRepository.DeleteAsync(finance);
