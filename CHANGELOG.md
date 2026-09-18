@@ -1,3 +1,9 @@
+## [0.0.7] - 2026-09-18
+
+### Features
+
+- feat: Inicio de To-do
+
 ## [0.0.6] - 2026-09-16
 
 ### Features
