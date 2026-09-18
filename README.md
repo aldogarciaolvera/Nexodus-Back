@@ -82,6 +82,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "transactionType": "Income o Expense",
       "amount": 0.0,
       "categoryId": "string (UUID)", // (Opcional)
+      "paymentMethod": "Tarjeta o Efectivo",
       "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
     }
     ```
@@ -91,6 +92,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "transactionType": "Income o Expense",
       "amount": 0.0,
       "categoryId": "string (UUID)", // (Opcional)
+      "paymentMethod": "Tarjeta o Efectivo",
       "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
     }
     ```
@@ -116,6 +118,39 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     }
     ```
 *   `DELETE /api/categories/{id}` - Elimina una categoría.
+
+**Lista de Tareas y Hábitos (`/api/todos`)** *(Requieren Autenticación JWT)*
+*   `GET /api/todos/` - Obtiene todas las tareas y hábitos del usuario.
+*   `GET /api/todos/{id}` - Obtiene una tarea o hábito por ID.
+*   `POST /api/todos/` - Crea una nueva tarea o hábito.
+    ```json
+    {
+      "task": "Leer 10 páginas",
+      "subtitle": "Capítulo 1", // (Opcional)
+      "tag": "Lectura", // (Opcional)
+      "urgent": false, // (Opcional)
+      "dueDate": "2024-03-15T12:00:00Z", // (Opcional)
+      "isHabit": true,
+      "frequency": "Daily", // Daily, Weekly, Monthly, Custom
+      "customDays": "Lunes,Miércoles" // (Opcional)
+    }
+    ```
+*   `PUT /api/todos/{id}` - Actualiza una tarea o hábito.
+    ```json
+    {
+      "task": "Leer 20 páginas",
+      "subtitle": "Capítulo 1 y 2",
+      "tag": "Lectura",
+      "urgent": true,
+      "isCompleted": false,
+      "dueDate": "2024-03-15T12:00:00Z",
+      "isHabit": true,
+      "frequency": "Daily",
+      "customDays": null
+    }
+    ```
+*   `POST /api/todos/{id}/complete` - Marca una tarea o hábito como completado hoy (incrementa la racha si es un hábito).
+*   `DELETE /api/todos/{id}` - Elimina la tarea o hábito.
 
 ## Configuración y Ejecución
 
