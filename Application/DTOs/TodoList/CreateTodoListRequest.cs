@@ -1,0 +1,16 @@
+using System;
+
+namespace Nexodus_Back.Application.DTOs.TodoList;
+
+public class CreateTodoListRequest
+{
+    public string Task { get; set; } = string.Empty;
+    public string? Subtitle { get; set; }
+    public string? Tag { get; set; }
+    public bool Urgent { get; set; }
+    public DateTime? DueDate { get; set; }
+    
+    public bool IsHabit { get; set; }
+    public string? Frequency { get; set; }
+    public string? CustomDays { get; set; }
+}

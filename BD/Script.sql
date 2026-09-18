@@ -12,8 +12,17 @@ CREATE TABLE TodoList (
     Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     UserId UUID REFERENCES "Users"("Id"),
     Task TEXT NOT NULL,
+    Subtitle VARCHAR(255),
+    Tag VARCHAR(50),
+    Urgent BOOLEAN DEFAULT FALSE,
     IsCompleted BOOLEAN DEFAULT FALSE,
     DueDate TIMESTAMPTZ,
+    IsHabit BOOLEAN DEFAULT FALSE,
+    Frequency VARCHAR(50),
+    CustomDays VARCHAR(255),
+    CurrentStreak INT DEFAULT 0,
+    HighestStreak INT DEFAULT 0,
+    LastCompletedAt TIMESTAMPTZ,
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ DEFAULT NOW()
 );

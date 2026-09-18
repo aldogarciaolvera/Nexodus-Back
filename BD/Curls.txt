@@ -118,3 +118,39 @@ curl -X PUT http://localhost:5033/api/categories/CATEGORY_ID
 # Delete Category
 curl -X DELETE http://localhost:5033/api/categories/CATEGORY_ID
 -H "Authorization: Bearer <TOKEN>"
+
+### TODOLIST & HABITS ENDPOINTS  ###
+
+# Get All Todos and Habits
+curl -X GET http://localhost:5033/api/todos
+-H "Authorization: Bearer <TOKEN>"
+
+# Get Todo/Habit By ID
+curl -X GET http://localhost:5033/api/todos/TODO_ID
+-H "Authorization: Bearer <TOKEN>"
+
+# Create Todo (Task)
+curl -X POST http://localhost:5033/api/todos
+-H "Content-Type: application/json"
+-H "Authorization: Bearer <TOKEN>" 
+-d '{"task": "Hacer la compra", "subtitle": "Súper", "tag": "Personal", "urgent": true, "isHabit": false}'
+
+# Create Habit
+curl -X POST http://localhost:5033/api/todos
+-H "Content-Type: application/json"
+-H "Authorization: Bearer <TOKEN>" 
+-d '{"task": "Hacer ejercicio", "isHabit": true, "frequency": "Daily"}'
+
+# Update Todo/Habit
+curl -X PUT http://localhost:5033/api/todos/TODO_ID
+-H "Content-Type: application/json"
+-H "Authorization: Bearer <TOKEN>" 
+-d '{"task": "Hacer ejercicio intenso", "subtitle": "Cardio", "tag": "Salud", "urgent": false, "isHabit": true, "frequency": "Daily", "isCompleted": false}'
+
+# Mark Habit as Completed Today
+curl -X POST http://localhost:5033/api/todos/TODO_ID/complete
+-H "Authorization: Bearer <TOKEN>"
+
+# Delete Todo/Habit
+curl -X DELETE http://localhost:5033/api/todos/TODO_ID
+-H "Authorization: Bearer <TOKEN>"
