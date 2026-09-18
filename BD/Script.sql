@@ -64,6 +64,7 @@ CREATE TABLE Finances (
     TransactionType TEXT NOT NULL, -- ingreso o gasto
     Amount NUMERIC(10, 2) NOT NULL,
     CategoryId UUID REFERENCES categories(id) ON DELETE SET NULL,
+    PaymentMethod TEXT NOT NULL DEFAULT '',
     TransactionDate TIMESTAMPTZ DEFAULT NOW(),
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ DEFAULT NOW()

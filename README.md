@@ -82,6 +82,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "transactionType": "Income o Expense",
       "amount": 0.0,
       "categoryId": "string (UUID)", // (Opcional)
+      "paymentMethod": "Tarjeta o Efectivo",
       "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
     }
     ```
@@ -91,6 +92,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "transactionType": "Income o Expense",
       "amount": 0.0,
       "categoryId": "string (UUID)", // (Opcional)
+      "paymentMethod": "Tarjeta o Efectivo",
       "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
     }
     ```

@@ -14,5 +14,10 @@ public class CreateFinanceRequestValidator : AbstractValidator<CreateFinanceRequ
             .NotEmpty().WithMessage("El tipo de transacción es obligatorio.")
             .Must(t => t == "Ingreso" || t == "Gasto")
             .WithMessage("El tipo de transacción debe ser 'Ingreso' o 'Gasto'.");
+
+        RuleFor(x => x.PaymentMethod)
+            .NotEmpty().WithMessage("El método de pago es obligatorio.")
+            .Must(p => p == "Tarjeta" || p == "Efectivo")
+            .WithMessage("El método de pago debe ser 'Tarjeta' o 'Efectivo'.");
     }
 }
