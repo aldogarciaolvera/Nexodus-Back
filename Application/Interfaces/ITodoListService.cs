@@ -13,4 +13,5 @@ public interface ITodoListService
     Task<TodoListDto> UpdateAsync(Guid userId, Guid id, UpdateTodoListRequest request);
     Task DeleteAsync(Guid userId, Guid id);
     Task<TodoListDto> MarkAsCompletedAsync(Guid userId, Guid id);
+    Task<TodoListDto> MarkAsUncompletedAsync(Guid userId, Guid id);
 }
