@@ -18,6 +18,7 @@ public class TodoList
     public int CurrentStreak { get; set; }
     public int HighestStreak { get; set; }
     public DateTime? LastCompletedAt { get; set; }
+    public DateTime? PreviousCompletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public User? User { get; set; }

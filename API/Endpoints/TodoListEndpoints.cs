@@ -26,6 +26,7 @@ public static class TodoListEndpoints
         group.MapPut("/{id:guid}", UpdateTodo);
         group.MapDelete("/{id:guid}", DeleteTodo);
         group.MapPost("/{id:guid}/complete", MarkAsCompleted);
+        group.MapPost("/{id:guid}/uncompleted", MarkAsUncompleted);
     }
 
     private static async Task<IResult> CreateTodo(
@@ -131,6 +132,21 @@ public static class TodoListEndpoints
         }
 
         var result = await todoListService.MarkAsCompletedAsync(userId, id);
+        return Results.Ok(result);
+    }
+
+    private static async Task<IResult> MarkAsUncompleted(
+        Guid id,
+        [FromServices] ITodoListService todoListService,
+        ClaimsPrincipal user)
+    {
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            throw new UnauthorizedException("Usuario no autenticado.");
+        }
+
+        var result = await todoListService.MarkAsUncompletedAsync(userId, id);
         return Results.Ok(result);
     }
 }

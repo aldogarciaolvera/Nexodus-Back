@@ -25,6 +25,7 @@ public class FinanceService : IFinanceService
             UserId = userId,
             TransactionType = request.TransactionType,
             Amount = request.Amount,
+            Description = request.Description,
             CategoryId = request.CategoryId,
             PaymentMethod = request.PaymentMethod,
             TransactionDate = request.TransactionDate ?? DateTime.UtcNow,
@@ -90,6 +91,7 @@ public class FinanceService : IFinanceService
 
         finance.TransactionType = request.TransactionType;
         finance.Amount = request.Amount;
+        finance.Description = request.Description;
         finance.CategoryId = request.CategoryId;
         finance.PaymentMethod = request.PaymentMethod;
         if (request.TransactionDate.HasValue)
@@ -128,6 +130,7 @@ public class FinanceService : IFinanceService
             UserId = finance.UserId,
             TransactionType = finance.TransactionType,
             Amount = finance.Amount,
+            Description = finance.Description,
             CategoryId = finance.CategoryId,
             PaymentMethod = finance.PaymentMethod,
             TransactionDate = finance.TransactionDate,

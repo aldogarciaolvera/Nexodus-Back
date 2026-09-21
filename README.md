@@ -81,6 +81,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     {
       "transactionType": "Income o Expense",
       "amount": 0.0,
+      "description": "string", // (Opcional)
       "categoryId": "string (UUID)", // (Opcional)
       "paymentMethod": "Tarjeta o Efectivo",
       "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
@@ -91,6 +92,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     {
       "transactionType": "Income o Expense",
       "amount": 0.0,
+      "description": "string", // (Opcional)
       "categoryId": "string (UUID)", // (Opcional)
       "paymentMethod": "Tarjeta o Efectivo",
       "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
@@ -150,6 +152,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     }
     ```
 *   `POST /api/todos/{id}/complete` - Marca una tarea o hábito como completado hoy (incrementa la racha si es un hábito).
+*   `POST /api/todos/{id}/uncompleted` - Desmarca una tarea o hábito completado hoy (restaura la racha anterior).
 *   `DELETE /api/todos/{id}` - Elimina la tarea o hábito.
 
 ## Configuración y Ejecución

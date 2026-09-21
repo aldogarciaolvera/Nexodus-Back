@@ -23,6 +23,7 @@ CREATE TABLE TodoList (
     CurrentStreak INT DEFAULT 0,
     HighestStreak INT DEFAULT 0,
     LastCompletedAt TIMESTAMPTZ,
+    PreviousCompletedAt TIMESTAMPTZ,
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ DEFAULT NOW()
 );
@@ -63,6 +64,7 @@ CREATE TABLE Finances (
     UserId UUID REFERENCES "Users"("Id"),
     TransactionType TEXT NOT NULL, -- ingreso o gasto
     Amount NUMERIC(10, 2) NOT NULL,
+    Description TEXT,
     CategoryId UUID REFERENCES categories(id) ON DELETE SET NULL,
     PaymentMethod TEXT NOT NULL DEFAULT '',
     TransactionDate TIMESTAMPTZ DEFAULT NOW(),

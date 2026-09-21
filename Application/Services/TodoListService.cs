@@ -142,6 +142,7 @@ public class TodoListService : ITodoListService
                 todo.HighestStreak = todo.CurrentStreak;
             }
 
+            todo.PreviousCompletedAt = todo.LastCompletedAt;
             todo.LastCompletedAt = now;
             todo.IsCompleted = true; // Reflejar en la base de datos (opcional si es dinámico)
         }
@@ -149,6 +150,46 @@ public class TodoListService : ITodoListService
         {
             // Tarea normal
             todo.IsCompleted = true;
+        }
+
+        await _repository.UpdateAsync(todo);
+        return MapToDto(todo);
+    }
+
+    public async Task<TodoListDto> MarkAsUncompletedAsync(Guid userId, Guid id)
+    {
+        var todo = await _repository.GetByIdAsync(userId, id);
+        if (todo == null)
+        {
+            throw new NotFoundException($"La tarea o hábito con Id '{id}' no fue encontrado.");
+        }
+
+        if (todo.IsHabit)
+        {
+            var now = DateTime.UtcNow;
+            
+            // Solo permitir desmarcar si fue completado hoy
+            if (todo.LastCompletedAt.HasValue && todo.LastCompletedAt.Value.Date == now.Date)
+            {
+                if (todo.CurrentStreak > 0)
+                {
+                    todo.CurrentStreak--;
+                }
+
+                // Restaurar la fecha en que se completó previamente
+                todo.LastCompletedAt = todo.PreviousCompletedAt;
+
+                todo.IsCompleted = false;
+            }
+            else
+            {
+                throw new ConflictException("Este hábito no ha sido completado hoy.");
+            }
+        }
+        else
+        {
+            // Tarea normal
+            todo.IsCompleted = false;
         }
 
         await _repository.UpdateAsync(todo);
@@ -172,6 +213,7 @@ public class TodoListService : ITodoListService
             CurrentStreak = todo.CurrentStreak,
             HighestStreak = todo.HighestStreak,
             LastCompletedAt = todo.LastCompletedAt,
+            PreviousCompletedAt = todo.PreviousCompletedAt,
             CreatedAt = todo.CreatedAt,
             UpdatedAt = todo.UpdatedAt
         };
