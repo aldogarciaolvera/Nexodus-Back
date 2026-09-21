@@ -213,6 +213,7 @@ public class TodoListService : ITodoListService
             CurrentStreak = todo.CurrentStreak,
             HighestStreak = todo.HighestStreak,
             LastCompletedAt = todo.LastCompletedAt,
+            PreviousCompletedAt = todo.PreviousCompletedAt,
             CreatedAt = todo.CreatedAt,
             UpdatedAt = todo.UpdatedAt
         };
