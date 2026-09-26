@@ -15,6 +15,7 @@ CREATE TABLE TodoList (
     Subtitle VARCHAR(255),
     Tag VARCHAR(50),
     Urgent BOOLEAN DEFAULT FALSE,
+    NotificationsEnabled BOOLEAN DEFAULT FALSE,
     IsCompleted BOOLEAN DEFAULT FALSE,
     DueDate TIMESTAMPTZ,
     IsHabit BOOLEAN DEFAULT FALSE,
@@ -70,4 +71,21 @@ CREATE TABLE Finances (
     TransactionDate TIMESTAMPTZ DEFAULT NOW(),
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE Notes (
+    Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    UserId UUID REFERENCES "Users"("Id"),
+    Type VARCHAR(50) NOT NULL, -- 'idea' or 'diario'
+    Title VARCHAR(255),
+    Content TEXT,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE ChecklistItems (
+    Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    NoteId UUID REFERENCES Notes(Id) ON DELETE CASCADE,
+    Text TEXT NOT NULL,
+    IsCompleted BOOLEAN DEFAULT FALSE
 );

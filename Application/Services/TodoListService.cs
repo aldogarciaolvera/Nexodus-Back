@@ -28,6 +28,7 @@ public class TodoListService : ITodoListService
             Subtitle = request.Subtitle,
             Tag = request.Tag,
             Urgent = request.Urgent,
+            NotificationsEnabled = request.NotificationsEnabled,
             DueDate = request.DueDate,
             IsHabit = request.IsHabit,
             Frequency = request.Frequency,
@@ -86,6 +87,7 @@ public class TodoListService : ITodoListService
         todo.Subtitle = request.Subtitle;
         todo.Tag = request.Tag;
         todo.Urgent = request.Urgent;
+        todo.NotificationsEnabled = request.NotificationsEnabled;
         todo.IsCompleted = request.IsCompleted;
         todo.DueDate = request.DueDate;
         todo.IsHabit = request.IsHabit;
@@ -205,6 +207,7 @@ public class TodoListService : ITodoListService
             Subtitle = todo.Subtitle,
             Tag = todo.Tag,
             Urgent = todo.Urgent,
+            NotificationsEnabled = todo.NotificationsEnabled,
             IsCompleted = todo.IsCompleted,
             DueDate = todo.DueDate,
             IsHabit = todo.IsHabit,

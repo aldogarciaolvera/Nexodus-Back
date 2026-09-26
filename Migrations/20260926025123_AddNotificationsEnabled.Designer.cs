@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nexodus_Back.Infrastructure.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Nexodus_Back.Migrations
 {
     [DbContext(typeof(NexodusDbContext))]
-    partial class NexodusDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926025123_AddNotificationsEnabled")]
+    partial class AddNotificationsEnabled
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,29 +56,6 @@ namespace Nexodus_Back.Migrations
                         .IsUnique();
 
                     b.ToTable("Categories");
-                });
-
-            modelBuilder.Entity("Nexodus_Back.Core.Entities.ChecklistItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsCompleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("NoteId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Text")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NoteId");
-
-                    b.ToTable("ChecklistItems");
                 });
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Diet", b =>
@@ -152,36 +132,6 @@ namespace Nexodus_Back.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Finances");
-                });
-
-            modelBuilder.Entity("Nexodus_Back.Core.Entities.Note", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Content")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Title")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Notes");
                 });
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.RefreshToken", b =>
@@ -373,17 +323,6 @@ namespace Nexodus_Back.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Nexodus_Back.Core.Entities.ChecklistItem", b =>
-                {
-                    b.HasOne("Nexodus_Back.Core.Entities.Note", "Note")
-                        .WithMany("Checklist")
-                        .HasForeignKey("NoteId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Note");
-                });
-
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Diet", b =>
                 {
                     b.HasOne("Nexodus_Back.Core.Entities.User", "User")
@@ -449,11 +388,6 @@ namespace Nexodus_Back.Migrations
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Category", b =>
                 {
                     b.Navigation("Finances");
-                });
-
-            modelBuilder.Entity("Nexodus_Back.Core.Entities.Note", b =>
-                {
-                    b.Navigation("Checklist");
                 });
 #pragma warning restore 612, 618
         }

@@ -131,6 +131,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "subtitle": "Capítulo 1", // (Opcional)
       "tag": "Lectura", // (Opcional)
       "urgent": false, // (Opcional)
+      "notificationsEnabled": true, // (Opcional)
       "dueDate": "2024-03-15T12:00:00Z", // (Opcional)
       "isHabit": true,
       "frequency": "Daily", // Daily, Weekly, Monthly, Custom
@@ -144,6 +145,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "subtitle": "Capítulo 1 y 2",
       "tag": "Lectura",
       "urgent": true,
+      "notificationsEnabled": false,
       "isCompleted": false,
       "dueDate": "2024-03-15T12:00:00Z",
       "isHabit": true,
@@ -154,6 +156,32 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   `POST /api/todos/{id}/complete` - Marca una tarea o hábito como completado hoy (incrementa la racha si es un hábito).
 *   `POST /api/todos/{id}/uncompleted` - Desmarca una tarea o hábito completado hoy (restaura la racha anterior).
 *   `DELETE /api/todos/{id}` - Elimina la tarea o hábito.
+
+**Notas y Diario (`/api/notes`)** *(Requieren Autenticación JWT)*
+*   `GET /api/notes/` - Obtiene todas las notas (ideas o diario) del usuario.
+*   `GET /api/notes/{id}` - Obtiene una nota específica por su ID.
+*   `POST /api/notes/` - Crea una nueva nota.
+    ```json
+    {
+      "type": "idea o diario",
+      "title": "string", // (Opcional)
+      "content": "string", // (Opcional)
+      "checklist": [ // (Opcional)
+        { "text": "Hacer la cama", "isCompleted": false }
+      ]
+    }
+    ```
+*   `PATCH /api/notes/{id}` - Actualiza una nota.
+    ```json
+    {
+      "title": "string", // (Opcional)
+      "content": "string", // (Opcional)
+      "checklist": [ // (Opcional, reemplaza todo el checklist)
+        { "text": "Hacer la cama", "isCompleted": true }
+      ]
+    }
+    ```
+*   `DELETE /api/notes/{id}` - Elimina la nota.
 
 ## Configuración y Ejecución
 

@@ -58,6 +58,8 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<ITodoListRepository, TodoListRepository>();
 builder.Services.AddScoped<ITodoListService, TodoListService>();
+builder.Services.AddScoped<INoteRepository, NoteRepository>();
+builder.Services.AddScoped<INoteService, NoteService>();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -87,6 +89,7 @@ app.MapFinanceEndpoints();
 app.MapCategoryEndpoints();
 app.MapUserEndpoints();
 app.MapTodoListEndpoints();
+app.MapNoteEndpoints();
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = System.DateTime.UtcNow }))
     .WithTags("System");
