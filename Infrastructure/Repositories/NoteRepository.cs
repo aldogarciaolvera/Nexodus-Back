@@ -39,8 +39,17 @@ public class NoteRepository : INoteRepository
 
     public async Task UpdateAsync(Note note)
     {
-        _context.Notes.Update(note);
+        // NO llamamos a _context.Notes.Update(note) porque la entidad ya está siendo "Trackeada"
+        // al haberla obtenido con GetByIdAndUserIdAsync. Llamar a Update() fuerza un estado "Modified"
+        // incluso para los ChecklistItems nuevos con un Guid generado, causando DbUpdateConcurrencyException.
         await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteChecklistItemsAsync(IEnumerable<ChecklistItem> items)
+    {
+        _context.ChecklistItems.RemoveRange(items);
+        // No llamamos SaveChangesAsync aquí, se llamará dentro de UpdateAsync del servicio.
+        await Task.CompletedTask; 
     }
 
     public async Task DeleteAsync(Note note)

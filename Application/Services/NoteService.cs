@@ -61,14 +61,55 @@ public class NoteService : INoteService
 
         if (dto.Checklist != null)
         {
-            note.Checklist.Clear();
-            foreach (var c in dto.Checklist)
+            var incomingIds = dto.Checklist
+                .Where(c => c.Id.HasValue && c.Id.Value != Guid.Empty)
+                .Select(c => c.Id!.Value)
+                .ToList();
+
+            // Opcional: Eliminar los que el frontend ya no envió
+            var toRemove = note.Checklist.Where(c => c.Id != Guid.Empty && !incomingIds.Contains(c.Id)).ToList();
+            foreach (var item in toRemove)
             {
-                note.Checklist.Add(new ChecklistItem
+                note.Checklist.Remove(item);
+            }
+
+            foreach (var incomingItem in dto.Checklist)
+            {
+                // Revisamos si el frontend mandó el ID vacío, nulo o de plano no lo mandó
+                if (!incomingItem.Id.HasValue || incomingItem.Id.Value == Guid.Empty)
                 {
-                    Text = c.Text,
-                    IsCompleted = c.IsCompleted
-                });
+                    // Es nuevo (Sin ID), lo agregamos
+                    note.Checklist.Add(new ChecklistItem 
+                    { 
+                        // EF Core detecta que es nuevo SÓLO si el ID es Guid.Empty
+                        Id = Guid.Empty, 
+                        Text = incomingItem.Text, 
+                        IsCompleted = incomingItem.IsCompleted 
+                    });
+                }
+                else 
+                {
+                    // Buscamos si ya existe en la base de datos
+                    var existingItem = note.Checklist.FirstOrDefault(c => c.Id == incomingItem.Id.Value);
+                    
+                    if (existingItem != null)
+                    {
+                        // Sí existe -> LO ACTUALIZAMOS
+                        existingItem.Text = incomingItem.Text;
+                        existingItem.IsCompleted = incomingItem.IsCompleted;
+                    }
+                    else
+                    {
+                        // Tiene un UUID pero no existe en BD -> El Frontend generó el UUID. LO AGREGAMOS
+                        note.Checklist.Add(new ChecklistItem 
+                        { 
+                            // IGNORAMOS el ID del front y ponemos Guid.Empty para forzar a EF Core a hacer un INSERT
+                            Id = Guid.Empty,
+                            Text = incomingItem.Text, 
+                            IsCompleted = incomingItem.IsCompleted 
+                        });
+                    }
+                }
             }
         }
 

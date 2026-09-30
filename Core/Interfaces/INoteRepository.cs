@@ -9,4 +9,5 @@ public interface INoteRepository
     Task<Note> AddAsync(Note note);
     Task UpdateAsync(Note note);
     Task DeleteAsync(Note note);
+    Task DeleteChecklistItemsAsync(IEnumerable<ChecklistItem> items);
 }

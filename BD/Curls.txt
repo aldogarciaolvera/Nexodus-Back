@@ -179,11 +179,11 @@ curl -X POST http://localhost:5033/api/notes
 -H "Authorization: Bearer <TOKEN>" 
 -d '{"type": "diario", "title": "Mi primer dia", "content": "Hoy fue un buen dia...", "checklist": []}'
 
-# Update Note
+# Update Note (Ejemplo de cómo mandar un ID existente y crear uno nuevo sin ID)
 curl -X PATCH http://localhost:5033/api/notes/NOTE_ID
 -H "Content-Type: application/json"
 -H "Authorization: Bearer <TOKEN>" 
--d '{"title": "Mi dia act.", "checklist": [{"text": "Terminar tarea", "isCompleted": true}]}'
+-d '{"title": "Mi dia act.", "checklist": [{"id": "UUID_DEL_ITEM_A_ACTUALIZAR", "text": "Terminar tarea", "isCompleted": true}, {"text": "Nueva tarea agregada", "isCompleted": false}]}'
 
 # Delete Note
 curl -X DELETE http://localhost:5033/api/notes/NOTE_ID
