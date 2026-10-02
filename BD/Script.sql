@@ -16,6 +16,7 @@ CREATE TABLE TodoList (
     Tag VARCHAR(50),
     Urgent BOOLEAN DEFAULT FALSE,
     NotificationsEnabled BOOLEAN DEFAULT FALSE,
+    NotificationTime VARCHAR(5),
     IsCompleted BOOLEAN DEFAULT FALSE,
     DueDate TIMESTAMPTZ,
     IsHabit BOOLEAN DEFAULT FALSE,

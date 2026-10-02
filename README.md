@@ -132,6 +132,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "tag": "Lectura", // (Opcional)
       "urgent": false, // (Opcional)
       "notificationsEnabled": true, // (Opcional)
+      "notificationTime": "08:00", // (Opcional, formato HH:mm)
       "dueDate": "2024-03-15T12:00:00Z", // (Opcional)
       "isHabit": true,
       "frequency": "Daily", // Daily, Weekly, Monthly, Custom
@@ -146,6 +147,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "tag": "Lectura",
       "urgent": true,
       "notificationsEnabled": false,
+      "notificationTime": null,
       "isCompleted": false,
       "dueDate": "2024-03-15T12:00:00Z",
       "isHabit": true,
@@ -176,7 +178,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     {
       "title": "string", // (Opcional)
       "content": "string", // (Opcional)
-      "checklist": [ // (Opcional, reemplaza todo el checklist)
+      "checklist": [ // (Opcional, actualiza existentes, elimina omitidos e inserta nuevos)
         { "text": "Hacer la cama", "isCompleted": true }
       ]
     }
