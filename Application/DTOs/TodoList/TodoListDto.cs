@@ -10,6 +10,7 @@ public class TodoListDto
     public string? Tag { get; set; }
     public bool Urgent { get; set; }
     public bool NotificationsEnabled { get; set; }
+    public string? NotificationTime { get; set; }
     public bool IsCompleted { get; set; }
     public DateTime? DueDate { get; set; }
     

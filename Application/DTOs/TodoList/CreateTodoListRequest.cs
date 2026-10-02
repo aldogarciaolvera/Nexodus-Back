@@ -9,6 +9,7 @@ public class CreateTodoListRequest
     public string? Tag { get; set; }
     public bool Urgent { get; set; }
     public bool NotificationsEnabled { get; set; }
+    public string? NotificationTime { get; set; }
     public DateTime? DueDate { get; set; }
     
     public bool IsHabit { get; set; }
