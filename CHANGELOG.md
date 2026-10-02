@@ -1,3 +1,11 @@
+## [0.0.9] - 2026-10-01
+
+### Features
+
+- feat: guardado de tiempo para notificaciones
+- feat: Arreglo de Ideas
+- feat: Endpoints de notes
+
 ## [0.0.8] - 2026-09-21
 
 ### Features
