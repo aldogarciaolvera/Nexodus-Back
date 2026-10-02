@@ -16,6 +16,8 @@ public class NexodusDbContext : DbContext
     public DbSet<Finance> Finances { get; set; } = null!;
     public DbSet<Category> Categories { get; set; } = null!;
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+    public DbSet<Note> Notes { get; set; } = null!;
+    public DbSet<ChecklistItem> ChecklistItems { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,5 +40,11 @@ public class NexodusDbContext : DbContext
             .WithMany(c => c.Finances)
             .HasForeignKey(f => f.CategoryId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Note>()
+            .HasMany(n => n.Checklist)
+            .WithOne(c => c.Note)
+            .HasForeignKey(c => c.NoteId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
