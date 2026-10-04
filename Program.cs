@@ -14,6 +14,7 @@ using Nexodus_Back.API.Middleware;
 using FluentValidation;
 using Nexodus_Back.Application.Validators;
 using Nexodus_Back.Application.Interfaces;
+using Nexodus_Back.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +62,12 @@ builder.Services.AddScoped<ITodoListService, TodoListService>();
 builder.Services.AddScoped<INoteRepository, NoteRepository>();
 builder.Services.AddScoped<INoteService, NoteService>();
 
+builder.Services.AddScoped<IStorageService, S3StorageService>();
+builder.Services.AddScoped<IExerciseRepository, ExerciseRepository>();
+builder.Services.AddScoped<ExerciseService>();
+builder.Services.AddScoped<IRoutineRepository, RoutineRepository>();
+builder.Services.AddScoped<RoutineService>();
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -90,6 +97,14 @@ app.MapCategoryEndpoints();
 app.MapUserEndpoints();
 app.MapTodoListEndpoints();
 app.MapNoteEndpoints();
+app.MapExerciseEndpoints();
+app.MapRoutineEndpoints();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<NexodusDbContext>();
+    await DataSeeder.SeedExercisesAsync(context, app.Environment.ContentRootPath);
+}
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = System.DateTime.UtcNow }))
     .WithTags("System");

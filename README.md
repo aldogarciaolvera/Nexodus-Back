@@ -185,6 +185,32 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```
 *   `DELETE /api/notes/{id}` - Elimina la nota.
 
+**Ejercicios (`/api/exercises`)** *(Requieren Autenticación JWT)*
+*   `GET /api/exercises/` - Obtiene el catálogo de ejercicios (incluye detalles y la URL del GIF en S3).
+*   `GET /api/exercises/{id}` - Obtiene un ejercicio en específico por su ID.
+
+**Rutinas (`/api/routines`)** *(Requieren Autenticación JWT)*
+*   `GET /api/routines/` - Obtiene todas las rutinas del usuario.
+*   `GET /api/routines/{id}` - Obtiene una rutina específica con todos sus ejercicios.
+*   `POST /api/routines/` - Crea una nueva rutina y asocia sus ejercicios.
+    ```json
+    {
+      "name": "string",
+      "description": "string",
+      "difficultyLevel": "string",
+      "exercises": [
+        {
+          "exerciseId": "string (UUID)",
+          "sets": 4,
+          "reps": 12,
+          "restTimeInSeconds": 90
+        }
+      ]
+    }
+    ```
+*   `PUT /api/routines/{id}` - Actualiza la rutina y sus ejercicios.
+*   `DELETE /api/routines/{id}` - Elimina la rutina.
+
 ## Configuración y Ejecución
 
 1.  **Clonar y configurar el entorno:**
