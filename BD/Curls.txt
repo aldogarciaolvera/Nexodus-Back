@@ -39,7 +39,9 @@ curl -X PUT http://localhost:5079/api/user/me \
 -d '{
   "username": "newUsername",
   "email": "new@example.com",
-  "phoneNumber": "0987654321"
+  "phoneNumber": "0987654321",
+  "weight": 70.5,
+  "height": 1.75
 }'
 
 

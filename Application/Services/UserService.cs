@@ -33,7 +33,9 @@ public class UserService : IUserService
         {
             Username = user.Username,
             Email = user.Email,
-            PhoneNumber = user.PhoneNumber
+            PhoneNumber = user.PhoneNumber,
+            Weight = user.Weight,
+            Height = user.Height
         };
     }
 
@@ -71,6 +73,8 @@ public class UserService : IUserService
         user.Username = request.Username;
         user.Email = request.Email;
         user.PhoneNumber = request.PhoneNumber;
+        user.Weight = request.Weight;
+        user.Height = request.Height;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _userRepository.UpdateAsync(user);
@@ -79,7 +83,9 @@ public class UserService : IUserService
         {
             Username = user.Username,
             Email = user.Email,
-            PhoneNumber = user.PhoneNumber
+            PhoneNumber = user.PhoneNumber,
+            Weight = user.Weight,
+            Height = user.Height
         };
     }
 }
