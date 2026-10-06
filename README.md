@@ -218,13 +218,14 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```bash
     cp .env.example .env
     ```
-    Configura tus credenciales de base de datos PostgreSQL y JWT dentro del `.env`.
+    Configura tus credenciales de base de datos PostgreSQL, configuración JWT y **credenciales S3 (AWS SDK / MinIO)** dentro del `.env`.
 
-2.  **Migraciones de Base de Datos:**
+2.  **Migraciones de Base de Datos y Seed:**
     El proyecto utiliza Entity Framework Core. Para aplicar la base de datos:
     ```bash
     dotnet ef database update
     ```
+    *Nota: Al correr la aplicación por primera vez, el `DataSeeder` inyectará automáticamente más de 1300 ejercicios desde `BD/Esquemas/exercises.json` a la base de datos.*
 
 3.  **Ejecutar:**
     ```bash
