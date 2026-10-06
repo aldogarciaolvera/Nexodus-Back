@@ -58,8 +58,8 @@ public static class DataSeeder
                 Equipment = exElem.TryGetProperty("equipment", out var eq) ? eq.GetString() : null,
                 Category = exElem.TryGetProperty("category", out var cat) ? cat.GetString() : null,
                 Instructions = instructionsStr,
-                GifS3Key = exElem.TryGetProperty("file", out var file) ? file.GetString() : null,
-                ThumbS3Key = exElem.TryGetProperty("thumbUrl", out var thb) ? thb.GetString() : null
+                GifS3Key = $"{externalId}.gif",
+                ThumbS3Key = $"{externalId}.thumb.webp"
             };
 
             exercisesToInsert.Add(exercise);
