@@ -17,6 +17,8 @@ public class RoutineRepository : IRoutineRepository
     public async Task<IEnumerable<Routine>> GetAllByUserIdAsync(Guid userId)
     {
         return await _context.Routines
+            .Include(r => r.RoutineExercises)
+                .ThenInclude(re => re.Exercise)
             .Where(r => r.UserId == userId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();

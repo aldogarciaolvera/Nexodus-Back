@@ -35,6 +35,13 @@ public static class RoutineEndpoints
             return Results.Created($"/api/routines/{result.Id}", result);
         });
 
+        group.MapPut("/{id:guid}", async (Guid id, CreateRoutineDto dto, HttpContext context, RoutineService routineService) =>
+        {
+            var userId = Guid.Parse(context.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var result = await routineService.UpdateRoutineAsync(id, userId, dto);
+            return Results.Ok(result);
+        });
+
         group.MapDelete("/{id:guid}", async (Guid id, HttpContext context, RoutineService routineService) =>
         {
             var userId = Guid.Parse(context.User.FindFirst(ClaimTypes.NameIdentifier)!.Value);

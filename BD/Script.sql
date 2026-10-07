@@ -126,12 +126,12 @@ CREATE TABLE RoutineExercises (
     PRIMARY KEY (RoutineId, ExerciseId)
 );
 
-CREATE TABLE WorkoutLogs (
-    Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    UserId UUID REFERENCES "Users"("Id") ON DELETE CASCADE,
-    RoutineId UUID REFERENCES Routines(Id) ON DELETE CASCADE,
-    DurationInSeconds INT NOT NULL,
-    CompletedExercisesCount INT NOT NULL,
-    DateCompleted TIMESTAMPTZ DEFAULT NOW(),
-    CreatedAt TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE "WorkoutLogs" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "UserId" UUID REFERENCES "Users"("Id") ON DELETE CASCADE,
+    "RoutineId" UUID REFERENCES "Routines"("Id") ON DELETE CASCADE,
+    "DurationInSeconds" INT NOT NULL,
+    "CompletedExercisesCount" INT NOT NULL,
+    "DateCompleted" TIMESTAMPTZ DEFAULT NOW(),
+    "CreatedAt" TIMESTAMPTZ DEFAULT NOW()
 );
