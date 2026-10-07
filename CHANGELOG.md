@@ -1,3 +1,11 @@
+## [0.0.10] - 2026-10-06
+
+### Features
+
+- feat: Peso y altura a los Usuarios
+- feat: implementacion de ejercicios para gym
+- feat: Estructura de Ejercicios e insersion de los mismos
+
 ## [0.0.9] - 2026-10-01
 
 ### Features
