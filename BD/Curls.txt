@@ -252,3 +252,20 @@ curl -X PUT http://localhost:5079/api/routines/ROUTINE_ID \
 # Delete Routine
 curl -X DELETE http://localhost:5079/api/routines/ROUTINE_ID \
 -H "Authorization: Bearer <TOKEN>"
+
+### WORKOUT LOGS ENDPOINTS ###
+
+# Get All Workout Logs
+curl -X GET http://localhost:5079/api/workouts \
+-H "Authorization: Bearer <TOKEN>"
+
+# Create Workout Log
+curl -X POST http://localhost:5079/api/workouts \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "routineId": "UUID_DE_LA_RUTINA",
+  "durationInSeconds": 3600,
+  "completedExercisesCount": 5,
+  "dateCompleted": "2026-10-07T00:00:00Z"
+}'

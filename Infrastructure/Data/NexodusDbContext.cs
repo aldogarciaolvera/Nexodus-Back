@@ -21,6 +21,7 @@ public class NexodusDbContext : DbContext
     public DbSet<Exercise> Exercises { get; set; } = null!;
     public DbSet<Routine> Routines { get; set; } = null!;
     public DbSet<RoutineExercise> RoutineExercises { get; set; } = null!;
+    public DbSet<WorkoutLog> WorkoutLogs { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -65,6 +66,18 @@ public class NexodusDbContext : DbContext
             .HasOne(re => re.Exercise)
             .WithMany()
             .HasForeignKey(re => re.ExerciseId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorkoutLog>()
+            .HasOne(wl => wl.User)
+            .WithMany()
+            .HasForeignKey(wl => wl.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorkoutLog>()
+            .HasOne(wl => wl.Routine)
+            .WithMany()
+            .HasForeignKey(wl => wl.RoutineId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

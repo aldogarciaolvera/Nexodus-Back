@@ -214,6 +214,20 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   `PUT /api/routines/{id}` - Actualiza la rutina y sus ejercicios.
 *   `DELETE /api/routines/{id}` - Elimina la rutina.
 
+**Historial de Entrenamientos (`/api/workouts`)** *(Requieren Autenticación JWT)*
+*   `GET /api/workouts/` - Obtiene todos los registros de entrenamiento del usuario.
+*   `GET /api/workouts/{id}` - Obtiene un registro de entrenamiento específico.
+*   `POST /api/workouts/` - Registra un nuevo entrenamiento completado.
+    ```json
+    {
+      "routineId": "string (UUID_DE_LA_RUTINA)",
+      "durationInSeconds": 3600,
+      "completedExercisesCount": 5,
+      "dateCompleted": "2026-10-07T00:00:00Z"
+    }
+    ```
+*   `DELETE /api/workouts/{id}` - Elimina un registro de entrenamiento.
+
 ## Configuración y Ejecución
 
 1.  **Clonar y configurar el entorno:**
