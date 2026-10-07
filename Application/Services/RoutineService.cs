@@ -67,6 +67,7 @@ public class RoutineService
                 re.Sets,
                 re.Reps,
                 re.RestTimeInSeconds,
+                re.Weight,
                 exDto
             ));
         }
@@ -104,7 +105,8 @@ public class RoutineService
                 ExerciseId = ex.ExerciseId,
                 Sets = ex.Sets,
                 Reps = ex.Reps,
-                RestTimeInSeconds = ex.RestTimeInSeconds
+                RestTimeInSeconds = ex.RestTimeInSeconds,
+                Weight = ex.Weight ?? 0
             });
         }
 
@@ -128,5 +130,38 @@ public class RoutineService
         if (routine == null) throw new NotFoundException($"Routine with ID {id} not found.");
 
         await _routineRepository.DeleteAsync(routine);
+    }
+
+    public async Task<RoutineDto> UpdateRoutineAsync(Guid id, Guid userId, CreateRoutineDto dto)
+    {
+        var routine = await _routineRepository.GetByIdAsync(id, userId);
+        if (routine == null) throw new NotFoundException($"Routine with ID {id} not found.");
+
+        routine.Name = dto.Name;
+        routine.Description = dto.Description;
+        routine.DifficultyLevel = dto.DifficultyLevel;
+        routine.TargetDay = dto.TargetDay;
+
+        // Limpiar ejercicios actuales
+        routine.RoutineExercises.Clear();
+
+        foreach (var ex in dto.Exercises)
+        {
+            var exerciseExists = await _exerciseRepository.GetByIdAsync(ex.ExerciseId);
+            if (exerciseExists == null) throw new ValidationException($"Exercise with ID {ex.ExerciseId} does not exist.");
+
+            routine.RoutineExercises.Add(new RoutineExercise
+            {
+                ExerciseId = ex.ExerciseId,
+                Sets = ex.Sets,
+                Reps = ex.Reps,
+                RestTimeInSeconds = ex.RestTimeInSeconds,
+                Weight = ex.Weight ?? 0
+            });
+        }
+
+        await _routineRepository.UpdateAsync(routine);
+
+        return await GetRoutineByIdAsync(id, userId);
     }
 }

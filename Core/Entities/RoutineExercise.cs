@@ -11,4 +11,5 @@ public class RoutineExercise
     public int Sets { get; set; } = 1;
     public int Reps { get; set; } = 1;
     public int RestTimeInSeconds { get; set; } = 60;
+    public double Weight { get; set; } = 0;
 }

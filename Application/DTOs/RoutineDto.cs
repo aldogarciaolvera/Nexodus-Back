@@ -16,5 +16,6 @@ public record RoutineExerciseDto(
     int Sets,
     int Reps,
     int RestTimeInSeconds,
+    double Weight,
     ExerciseDto? ExerciseDetails
 );

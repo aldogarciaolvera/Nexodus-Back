@@ -12,5 +12,6 @@ public record CreateRoutineExerciseDto(
     Guid ExerciseId,
     int Sets,
     int Reps,
-    int RestTimeInSeconds
+    int RestTimeInSeconds,
+    double? Weight
 );

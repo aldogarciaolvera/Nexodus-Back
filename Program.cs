@@ -67,6 +67,8 @@ builder.Services.AddScoped<IExerciseRepository, ExerciseRepository>();
 builder.Services.AddScoped<ExerciseService>();
 builder.Services.AddScoped<IRoutineRepository, RoutineRepository>();
 builder.Services.AddScoped<RoutineService>();
+builder.Services.AddScoped<IWorkoutLogRepository, WorkoutLogRepository>();
+builder.Services.AddScoped<WorkoutLogService>();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -99,6 +101,7 @@ app.MapTodoListEndpoints();
 app.MapNoteEndpoints();
 app.MapExerciseEndpoints();
 app.MapRoutineEndpoints();
+app.MapWorkoutLogEndpoints();
 
 using (var scope = app.Services.CreateScope())
 {
