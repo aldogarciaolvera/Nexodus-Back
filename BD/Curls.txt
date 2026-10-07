@@ -39,7 +39,9 @@ curl -X PUT http://localhost:5079/api/user/me \
 -d '{
   "username": "newUsername",
   "email": "new@example.com",
-  "phoneNumber": "0987654321"
+  "phoneNumber": "0987654321",
+  "weight": 70.5,
+  "height": 1.75
 }'
 
 
@@ -100,92 +102,153 @@ curl -X DELETE http://localhost:5079/api/finances/YOUR_TRANSACTION_ID \
 ### CATEGORIES ###
 
 # Create Category
-curl -X POST http://localhost:5033/api/categories 
--H "Content-Type: application/json" 
--H "Authorization: Bearer <TOKEN>" 
+curl -X POST http://localhost:5079/api/categories \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
 -d '{"name": "Food", "description": "Groceries and dining out", "monthlyLimit": 500.00}'
 
 # Get All Categories
-curl -X GET http://localhost:5033/api/categories 
+curl -X GET http://localhost:5079/api/categories \
 -H "Authorization: Bearer <TOKEN>"
 
 # Get Category by ID
-curl -X GET http://localhost:5033/api/categories/CATEGORY_ID
+curl -X GET http://localhost:5079/api/categories/CATEGORY_ID \
 -H "Authorization: Bearer <TOKEN>"
 
 # Update Category
-curl -X PUT http://localhost:5033/api/categories/CATEGORY_ID
--H "Content-Type: application/json" 
--H "Authorization: Bearer <TOKEN>" 
+curl -X PUT http://localhost:5079/api/categories/CATEGORY_ID \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
 -d '{"name": "Food & Dining", "description": "All food expenses", "monthlyLimit": 600.00}'
 
 # Delete Category
-curl -X DELETE http://localhost:5033/api/categories/CATEGORY_ID
+curl -X DELETE http://localhost:5079/api/categories/CATEGORY_ID \
 -H "Authorization: Bearer <TOKEN>"
 
 ### TODOLIST & HABITS ENDPOINTS  ###
 
 # Get All Todos and Habits
-curl -X GET http://localhost:5033/api/todos
+curl -X GET http://localhost:5079/api/todos \
 -H "Authorization: Bearer <TOKEN>"
 
 # Get Todo/Habit By ID
-curl -X GET http://localhost:5033/api/todos/TODO_ID
+curl -X GET http://localhost:5079/api/todos/TODO_ID \
 -H "Authorization: Bearer <TOKEN>"
 
 # Create Todo (Task)
-curl -X POST http://localhost:5033/api/todos
--H "Content-Type: application/json"
--H "Authorization: Bearer <TOKEN>" 
+curl -X POST http://localhost:5079/api/todos \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
 -d '{"task": "Hacer la compra", "subtitle": "Súper", "tag": "Personal", "urgent": true, "notificationsEnabled": true, "notificationTime": "09:00", "isHabit": false}'
 
 # Create Habit
-curl -X POST http://localhost:5033/api/todos
--H "Content-Type: application/json"
--H "Authorization: Bearer <TOKEN>" 
+curl -X POST http://localhost:5079/api/todos \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
 -d '{"task": "Hacer ejercicio", "isHabit": true, "notificationsEnabled": true, "notificationTime": "07:00", "frequency": "Daily"}'
 
 # Update Todo/Habit
-curl -X PUT http://localhost:5033/api/todos/TODO_ID
--H "Content-Type: application/json"
--H "Authorization: Bearer <TOKEN>" 
+curl -X PUT http://localhost:5079/api/todos/TODO_ID \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
 -d '{"task": "Hacer ejercicio intenso", "subtitle": "Cardio", "tag": "Salud", "urgent": false, "notificationsEnabled": true, "notificationTime": "07:30", "isHabit": true, "frequency": "Daily", "isCompleted": false}'
 
 # Mark Habit as Completed Today
-curl -X POST http://localhost:5033/api/todos/TODO_ID/complete
+curl -X POST http://localhost:5079/api/todos/TODO_ID/complete \
 -H "Authorization: Bearer <TOKEN>"
 
 # Undo Habit Completion Today
-curl -X POST http://localhost:5033/api/todos/TODO_ID/uncompleted
+curl -X POST http://localhost:5079/api/todos/TODO_ID/uncompleted \
 -H "Authorization: Bearer <TOKEN>"
 
 # Delete Todo/Habit
-curl -X DELETE http://localhost:5033/api/todos/TODO_ID
+curl -X DELETE http://localhost:5079/api/todos/TODO_ID \
 -H "Authorization: Bearer <TOKEN>"
 
 ### NOTES (JOURNAL & IDEAS) ENDPOINTS ###
 
 # Get All Notes
-curl -X GET http://localhost:5033/api/notes
+curl -X GET http://localhost:5079/api/notes \
 -H "Authorization: Bearer <TOKEN>"
 
 # Get Note By ID
-curl -X GET http://localhost:5033/api/notes/NOTE_ID
+curl -X GET http://localhost:5079/api/notes/NOTE_ID \
 -H "Authorization: Bearer <TOKEN>"
 
 # Create Note
-curl -X POST http://localhost:5033/api/notes
--H "Content-Type: application/json"
--H "Authorization: Bearer <TOKEN>" 
+curl -X POST http://localhost:5079/api/notes \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
 -d '{"type": "diario", "title": "Mi primer dia", "content": "Hoy fue un buen dia...", "checklist": []}'
 
 # Update Note (Ejemplo de cómo mandar un ID existente y crear uno nuevo generando un UUID en el front)
-curl -X PATCH http://localhost:5033/api/notes/NOTE_ID
--H "Content-Type: application/json"
--H "Authorization: Bearer <TOKEN>" 
+curl -X PATCH http://localhost:5079/api/notes/NOTE_ID \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
 -d '{"title": "Mi dia act.", "checklist": [{"id": "UUID_DEL_ITEM_A_ACTUALIZAR", "text": "Terminar tarea", "isCompleted": true}, {"id": "NUEVO_UUID_GENERADO", "text": "Nueva tarea agregada", "isCompleted": false}]}'
 
 # Delete Note
-curl -X DELETE http://localhost:5033/api/notes/NOTE_ID
+curl -X DELETE http://localhost:5079/api/notes/NOTE_ID \
 -H "Authorization: Bearer <TOKEN>"
 
+### EXERCISES ENDPOINTS ###
+
+# Get All Exercises
+curl -X GET http://localhost:5079/api/exercises \
+-H "Authorization: Bearer <TOKEN>"
+
+# Get Exercise by ID
+curl -X GET http://localhost:5079/api/exercises/EXERCISE_ID \
+-H "Authorization: Bearer <TOKEN>"
+
+### ROUTINES ENDPOINTS ###
+
+# Get All Routines
+curl -X GET http://localhost:5079/api/routines \
+-H "Authorization: Bearer <TOKEN>"
+
+# Get Routine By ID (includes exercises)
+curl -X GET http://localhost:5079/api/routines/ROUTINE_ID \
+-H "Authorization: Bearer <TOKEN>"
+
+# Create Routine
+curl -X POST http://localhost:5079/api/routines \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "name": "Push Day",
+  "description": "Rutina de empuje (Pecho, Hombro, Triceps)",
+  "difficultyLevel": "Intermediate",
+  "targetDay": 1,
+  "exercises": [
+    {
+      "exerciseId": "UUID_DEL_EJERCICIO",
+      "sets": 4,
+      "reps": 12,
+      "restTimeInSeconds": 90
+    }
+  ]
+}'
+
+# Update Routine
+curl -X PUT http://localhost:5079/api/routines/ROUTINE_ID \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "name": "Push Day Updated",
+  "description": "Rutina de empuje modificada",
+  "difficultyLevel": "Advanced",
+  "targetDay": 3,
+  "exercises": [
+    {
+      "exerciseId": "UUID_DEL_EJERCICIO",
+      "sets": 5,
+      "reps": 10,
+      "restTimeInSeconds": 60
+    }
+  ]
+}'
+
+# Delete Routine
+curl -X DELETE http://localhost:5079/api/routines/ROUTINE_ID \
+-H "Authorization: Bearer <TOKEN>"

@@ -10,6 +10,8 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
     public string Role { get; set; } = "User";
+    public double Weight { get; set; } = 0;
+    public double Height { get; set; } = 0;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

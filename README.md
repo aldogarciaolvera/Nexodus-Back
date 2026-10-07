@@ -65,7 +65,9 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     {
       "username": "newUsername",
       "email": "new@example.com",
-      "phoneNumber": "0987654321" // (Opcional)
+      "phoneNumber": "0987654321", // (Opcional)
+      "weight": 70.5, // (Opcional, en kg)
+      "height": 1.75 // (Opcional, en metros)
     }
     ```
 
@@ -185,6 +187,33 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```
 *   `DELETE /api/notes/{id}` - Elimina la nota.
 
+**Ejercicios (`/api/exercises`)** *(Requieren Autenticación JWT)*
+*   `GET /api/exercises/` - Obtiene el catálogo de ejercicios (incluye detalles y la URL del GIF en S3).
+*   `GET /api/exercises/{id}` - Obtiene un ejercicio en específico por su ID.
+
+**Rutinas (`/api/routines`)** *(Requieren Autenticación JWT)*
+*   `GET /api/routines/` - Obtiene todas las rutinas del usuario.
+*   `GET /api/routines/{id}` - Obtiene una rutina específica con todos sus ejercicios.
+*   `POST /api/routines/` - Crea una nueva rutina y asocia sus ejercicios.
+    ```json
+    {
+      "name": "string",
+      "description": "string",
+      "difficultyLevel": "string",
+      "targetDay": 1, // (Opcional, 1 al 7)
+      "exercises": [
+        {
+          "exerciseId": "string (UUID)",
+          "sets": 4,
+          "reps": 12,
+          "restTimeInSeconds": 90
+        }
+      ]
+    }
+    ```
+*   `PUT /api/routines/{id}` - Actualiza la rutina y sus ejercicios.
+*   `DELETE /api/routines/{id}` - Elimina la rutina.
+
 ## Configuración y Ejecución
 
 1.  **Clonar y configurar el entorno:**
@@ -192,13 +221,14 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```bash
     cp .env.example .env
     ```
-    Configura tus credenciales de base de datos PostgreSQL y JWT dentro del `.env`.
+    Configura tus credenciales de base de datos PostgreSQL, configuración JWT y **credenciales S3 (AWS SDK / MinIO)** dentro del `.env`.
 
-2.  **Migraciones de Base de Datos:**
+2.  **Migraciones de Base de Datos y Seed:**
     El proyecto utiliza Entity Framework Core. Para aplicar la base de datos:
     ```bash
     dotnet ef database update
     ```
+    *Nota: Al correr la aplicación por primera vez, el `DataSeeder` inyectará automáticamente más de 1300 ejercicios desde `BD/Esquemas/exercises.json` a la base de datos.*
 
 3.  **Ejecutar:**
     ```bash

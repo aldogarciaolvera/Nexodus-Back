@@ -4,6 +4,8 @@ CREATE TABLE "Users" (
     "Email" VARCHAR(100) UNIQUE NOT NULL,
     "PasswordHash" VARCHAR(255) NOT NULL,
     "PhoneNumber" VARCHAR(20) NULL,
+    "Weight" DOUBLE PRECISION DEFAULT 0,
+    "Height" DOUBLE PRECISION DEFAULT 0,
     "CreatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -90,3 +92,36 @@ CREATE TABLE ChecklistItems (
     Text TEXT NOT NULL,
     IsCompleted BOOLEAN DEFAULT FALSE
 );
+
+CREATE TABLE Exercises (
+    Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ExternalId VARCHAR(255) UNIQUE NOT NULL,
+    Name VARCHAR(255) NOT NULL,
+    BodyPart VARCHAR(100),
+    Muscle VARCHAR(100),
+    Equipment VARCHAR(100),
+    Category VARCHAR(100),
+    Instructions TEXT,
+    GifS3Key VARCHAR(500),
+    ThumbS3Key VARCHAR(500)
+);
+
+CREATE TABLE Routines (
+    Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    UserId UUID REFERENCES "Users"("Id") ON DELETE CASCADE,
+    Name VARCHAR(255) NOT NULL,
+    Description TEXT,
+    DifficultyLevel VARCHAR(50),
+    TargetDay INTEGER NULL,
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE RoutineExercises (
+    RoutineId UUID REFERENCES Routines(Id) ON DELETE CASCADE,
+    ExerciseId UUID REFERENCES Exercises(Id) ON DELETE CASCADE,
+    Sets INT NOT NULL DEFAULT 1,
+    Reps INT NOT NULL DEFAULT 1,
+    RestTimeInSeconds INT NOT NULL DEFAULT 60,
+    PRIMARY KEY (RoutineId, ExerciseId)
+);
