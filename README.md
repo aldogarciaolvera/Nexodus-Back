@@ -65,7 +65,9 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     {
       "username": "newUsername",
       "email": "new@example.com",
-      "phoneNumber": "0987654321" // (Opcional)
+      "phoneNumber": "0987654321", // (Opcional)
+      "weight": 70.5, // (Opcional, en kg)
+      "height": 1.75 // (Opcional, en metros)
     }
     ```
 
@@ -198,6 +200,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "name": "string",
       "description": "string",
       "difficultyLevel": "string",
+      "targetDay": 1, // (Opcional, 1 al 7)
       "exercises": [
         {
           "exerciseId": "string (UUID)",
