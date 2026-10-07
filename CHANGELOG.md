@@ -1,3 +1,10 @@
+## [0.0.11] - 2026-10-07
+
+### Features
+
+- feat: Rutinas completas
+- feat: Workout Log
+
 ## [0.0.10] - 2026-10-06
 
 ### Features
