@@ -27,6 +27,7 @@ public class RoutineService
             r.Name,
             r.Description,
             r.DifficultyLevel,
+            r.TargetDay,
             new List<RoutineExerciseDto>(), // Sin detalle para listado general por rendimiento
             r.CreatedAt,
             r.UpdatedAt
@@ -75,6 +76,7 @@ public class RoutineService
             routine.Name,
             routine.Description,
             routine.DifficultyLevel,
+            routine.TargetDay,
             exercisesList,
             routine.CreatedAt,
             routine.UpdatedAt
@@ -88,7 +90,8 @@ public class RoutineService
             UserId = userId,
             Name = dto.Name,
             Description = dto.Description,
-            DifficultyLevel = dto.DifficultyLevel
+            DifficultyLevel = dto.DifficultyLevel,
+            TargetDay = dto.TargetDay
         };
 
         foreach (var ex in dto.Exercises)
@@ -112,6 +115,7 @@ public class RoutineService
             created.Name,
             created.Description,
             created.DifficultyLevel,
+            created.TargetDay,
             new List<RoutineExerciseDto>(),
             created.CreatedAt,
             created.UpdatedAt

@@ -5,6 +5,7 @@ public record RoutineDto(
     string Name,
     string? Description,
     string? DifficultyLevel,
+    int? TargetDay,
     IEnumerable<RoutineExerciseDto> Exercises,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt

@@ -112,6 +112,7 @@ CREATE TABLE Routines (
     Name VARCHAR(255) NOT NULL,
     Description TEXT,
     DifficultyLevel VARCHAR(50),
+    TargetDay INTEGER NULL,
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
     UpdatedAt TIMESTAMPTZ DEFAULT NOW()
 );

@@ -219,6 +219,7 @@ curl -X POST http://localhost:5079/api/routines \
   "name": "Push Day",
   "description": "Rutina de empuje (Pecho, Hombro, Triceps)",
   "difficultyLevel": "Intermediate",
+  "targetDay": 1,
   "exercises": [
     {
       "exerciseId": "UUID_DEL_EJERCICIO",
@@ -237,6 +238,7 @@ curl -X PUT http://localhost:5079/api/routines/ROUTINE_ID \
   "name": "Push Day Updated",
   "description": "Rutina de empuje modificada",
   "difficultyLevel": "Advanced",
+  "targetDay": 3,
   "exercises": [
     {
       "exerciseId": "UUID_DEL_EJERCICIO",

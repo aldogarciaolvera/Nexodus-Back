@@ -8,6 +8,7 @@ public class Routine
     public string Name { get; set; } = null!;
     public string? Description { get; set; }
     public string? DifficultyLevel { get; set; }
+    public int? TargetDay { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

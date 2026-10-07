@@ -4,6 +4,7 @@ public record CreateRoutineDto(
     string Name,
     string? Description,
     string? DifficultyLevel,
+    int? TargetDay,
     IEnumerable<CreateRoutineExerciseDto> Exercises
 );
 

@@ -129,17 +129,8 @@ public class TodoListService : ITodoListService
                 throw new ConflictException("Este hábito ya fue completado hoy.");
             }
 
-            // Lógica de racha
-            if (todo.LastCompletedAt.HasValue && todo.LastCompletedAt.Value.Date == now.Date.AddDays(-1))
-            {
-                // Rachada continuada
-                todo.CurrentStreak++;
-            }
-            else
-            {
-                // Racha rota o primera vez
-                todo.CurrentStreak = 1;
-            }
+            // Contador histórico de veces completadas
+            todo.CurrentStreak += 1;
 
             if (todo.CurrentStreak > todo.HighestStreak)
             {
