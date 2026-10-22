@@ -9,18 +9,17 @@ using Nexodus_Back.Infrastructure.Data;
 
 namespace Nexodus_Back.Infrastructure.Repositories;
 
-public class CategoryRepository : ICategoryRepository
+/// <summary>
+/// Entity Framework implementation of user categories repository.
+/// </summary>
+public class CategoryRepository(NexodusDbContext context) : ICategoryRepository
 {
-    private readonly NexodusDbContext _context;
-
-    public CategoryRepository(NexodusDbContext context)
-    {
-        _context = context;
-    }
+    private readonly NexodusDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
 
     public async Task<IEnumerable<Category>> GetByUserIdAsync(Guid userId)
     {
         return await _context.Categories
+            .AsNoTracking()
             .Where(c => c.UserId == userId)
             .ToListAsync();
     }

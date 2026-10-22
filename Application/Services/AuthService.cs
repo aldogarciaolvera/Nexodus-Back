@@ -1,26 +1,27 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Nexodus_Back.Application.DTOs.Auth;
+using Nexodus_Back.Application.Interfaces;
 using Nexodus_Back.Core.Entities;
-using Nexodus_Back.Core.Interfaces;
 using Nexodus_Back.Core.Exceptions;
+using Nexodus_Back.Core.Interfaces;
 
 namespace Nexodus_Back.Application.Services;
 
-public class AuthService : IAuthService
+/// <summary>
+/// Provides user authentication, registration and token issuance operations.
+/// </summary>
+public class AuthService(
+    IUserRepository userRepository,
+    IPasswordHasher passwordHasher,
+    IJwtProvider jwtProvider) : IAuthService
 {
-    private readonly IUserRepository _userRepository;
-    private readonly IPasswordHasher _passwordHasher;
-    private readonly IJwtProvider _jwtProvider;
+    private readonly IUserRepository _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+    private readonly IPasswordHasher _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
+    private readonly IJwtProvider _jwtProvider = jwtProvider ?? throw new ArgumentNullException(nameof(jwtProvider));
 
-    public AuthService(IUserRepository userRepository, IPasswordHasher passwordHasher, IJwtProvider jwtProvider)
-    {
-        _userRepository = userRepository;
-        _passwordHasher = passwordHasher;
-        _jwtProvider = jwtProvider;
-    }
-
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
         request.Email = request.Email?.ToLowerInvariant() ?? string.Empty;
         var existingUser = await _userRepository.GetByEmailAsync(request.Email) ?? await _userRepository.GetByUsernameAsync(request.Username);
@@ -36,17 +37,17 @@ public class AuthService : IAuthService
             Email = request.Email,
             PasswordHash = _passwordHasher.Hash(request.Password),
             PhoneNumber = request.PhoneNumber,
-            Role = "User", // Role por defecto
+            Role = "User",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         var createdUser = await _userRepository.AddAsync(user);
 
-        return await GenerateAuthResponse(createdUser);
+        return await GenerateAuthResponseAsync(createdUser);
     }
 
-    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         request.Email = request.Email?.ToLowerInvariant() ?? string.Empty;
         var user = await _userRepository.GetByEmailAsync(request.Email);
@@ -56,10 +57,10 @@ public class AuthService : IAuthService
             throw new UnauthorizedException("Correo o contraseña inválidos.");
         }
 
-        return await GenerateAuthResponse(user);
+        return await GenerateAuthResponseAsync(user);
     }
 
-    public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request)
+    public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
     {
         var refreshToken = await _userRepository.GetRefreshTokenAsync(request.RefreshToken);
 
@@ -76,10 +77,10 @@ public class AuthService : IAuthService
              throw new UnauthorizedException("Usuario no encontrado.");
         }
 
-        return await GenerateAuthResponse(refreshToken.User);
+        return await GenerateAuthResponseAsync(refreshToken.User);
     }
 
-    private async Task<AuthResponse> GenerateAuthResponse(User user)
+    private async Task<AuthResponse> GenerateAuthResponseAsync(User user)
     {
         var token = _jwtProvider.GenerateToken(user);
         var refreshToken = _jwtProvider.GenerateRefreshToken(user);

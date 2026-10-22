@@ -75,7 +75,7 @@ curl -X POST http://localhost:5079/api/finances/ \
   "transactionType": "Income",
   "amount": 1500.50,
   "description": "Pago de nómina quincenal",
-  "category": "Salary",
+  "categoryId": "UUID_DE_LA_CATEGORIA_OPCIONAL",
   "paymentMethod": "Tarjeta",
   "transactionDate": "2026-03-15T12:00:00Z"
 }'
@@ -89,7 +89,7 @@ curl -X PUT http://localhost:5079/api/finances/YOUR_TRANSACTION_ID \
   "transactionType": "Expense",
   "amount": 50.00,
   "description": "Compra de despensa semanal",
-  "category": "Groceries",
+  "categoryId": "UUID_DE_LA_CATEGORIA_OPCIONAL",
   "paymentMethod": "Efectivo",
   "transactionDate": "2026-03-16T15:30:00Z"
 }'
@@ -193,8 +193,8 @@ curl -X DELETE http://localhost:5079/api/notes/NOTE_ID \
 
 ### EXERCISES ENDPOINTS ###
 
-# Get All Exercises
-curl -X GET http://localhost:5079/api/exercises \
+# Get All Exercises (con paginación opcional: page y pageSize)
+curl -X GET "http://localhost:5079/api/exercises?page=1&pageSize=50" \
 -H "Authorization: Bearer <TOKEN>"
 
 # Get Exercise by ID
@@ -225,7 +225,8 @@ curl -X POST http://localhost:5079/api/routines \
       "exerciseId": "UUID_DEL_EJERCICIO",
       "sets": 4,
       "reps": 12,
-      "restTimeInSeconds": 90
+      "restTimeInSeconds": 90,
+      "weight": 20.0
     }
   ]
 }'
@@ -244,7 +245,8 @@ curl -X PUT http://localhost:5079/api/routines/ROUTINE_ID \
       "exerciseId": "UUID_DEL_EJERCICIO",
       "sets": 5,
       "reps": 10,
-      "restTimeInSeconds": 60
+      "restTimeInSeconds": 60,
+      "weight": 22.5
     }
   ]
 }'
@@ -259,6 +261,10 @@ curl -X DELETE http://localhost:5079/api/routines/ROUTINE_ID \
 curl -X GET http://localhost:5079/api/workouts \
 -H "Authorization: Bearer <TOKEN>"
 
+# Get Workout Log By ID
+curl -X GET http://localhost:5079/api/workouts/WORKOUT_LOG_ID \
+-H "Authorization: Bearer <TOKEN>"
+
 # Create Workout Log
 curl -X POST http://localhost:5079/api/workouts \
 -H "Content-Type: application/json" \
@@ -269,3 +275,7 @@ curl -X POST http://localhost:5079/api/workouts \
   "completedExercisesCount": 5,
   "dateCompleted": "2026-10-07T00:00:00Z"
 }'
+
+# Delete Workout Log
+curl -X DELETE http://localhost:5079/api/workouts/WORKOUT_LOG_ID \
+-H "Authorization: Bearer <TOKEN>"

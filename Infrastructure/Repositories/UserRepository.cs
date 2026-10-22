@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Nexodus_Back.Core.Entities;
@@ -6,14 +7,12 @@ using Nexodus_Back.Infrastructure.Data;
 
 namespace Nexodus_Back.Infrastructure.Repositories;
 
-public class UserRepository : IUserRepository
+/// <summary>
+/// Entity Framework implementation of user identity and refresh token repository.
+/// </summary>
+public class UserRepository(NexodusDbContext context) : IUserRepository
 {
-    private readonly NexodusDbContext _context;
-
-    public UserRepository(NexodusDbContext context)
-    {
-        _context = context;
-    }
+    private readonly NexodusDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
 
     public async Task<User?> GetByEmailAsync(string email)
     {

@@ -1,32 +1,20 @@
+using System;
+using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Nexodus_Back.Core.Interfaces;
+using Nexodus_Back.Infrastructure.Configuration;
 
 namespace Nexodus_Back.Infrastructure.Services;
 
-public class S3StorageService : IStorageService
+/// <summary>
+/// Provides S3 pre-signed URL generation and object storage interaction using an injected IAmazonS3 client.
+/// </summary>
+public class S3StorageService(IAmazonS3 s3Client, IOptions<S3Options> options) : IStorageService
 {
-    private readonly string _bucketName;
-    private readonly AmazonS3Client _s3Client;
-
-    public S3StorageService()
-    {
-        string accessKey = Environment.GetEnvironmentVariable("S3_ACCESS_KEY") ?? throw new ArgumentNullException("S3_ACCESS_KEY is missing in environment variables");
-        string secretKey = Environment.GetEnvironmentVariable("S3_SECRET_KEY") ?? throw new ArgumentNullException("S3_SECRET_KEY is missing in environment variables");
-        string serviceUrl = Environment.GetEnvironmentVariable("S3_ENDPOINT") ?? throw new ArgumentNullException("S3_ENDPOINT is missing in environment variables");
-        
-        // Default bucket name to nexodus if not provided
-        _bucketName = Environment.GetEnvironmentVariable("S3_BUCKET_NAME") ?? "nexodus";
-
-        var config = new AmazonS3Config
-        {
-            ServiceURL = serviceUrl.StartsWith("http") ? serviceUrl : $"https://{serviceUrl}",
-            ForcePathStyle = true // Requerido normalmente para S3 customizados (como MinIO o Cloudflare R2) para que use s3.url.com/bucket/key en vez de bucket.s3.url.com/key
-        };
-
-        _s3Client = new AmazonS3Client(accessKey, secretKey, config);
-    }
+    private readonly IAmazonS3 _s3Client = s3Client ?? throw new ArgumentNullException(nameof(s3Client));
+    private readonly S3Options _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
 
     public Task<string> GetFileUrlAsync(string key)
     {
@@ -35,9 +23,9 @@ public class S3StorageService : IStorageService
 
         var request = new GetPreSignedUrlRequest
         {
-            BucketName = _bucketName,
+            BucketName = _options.BucketName,
             Key = key,
-            Expires = DateTime.UtcNow.AddHours(2) // La URL expirará en 2 horas
+            Expires = DateTime.UtcNow.AddHours(2)
         };
 
         string url = _s3Client.GetPreSignedURL(request);

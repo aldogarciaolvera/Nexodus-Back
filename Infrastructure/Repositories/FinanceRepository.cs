@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,14 +9,12 @@ using Nexodus_Back.Infrastructure.Data;
 
 namespace Nexodus_Back.Infrastructure.Repositories;
 
-public class FinanceRepository : IFinanceRepository
+/// <summary>
+/// Entity Framework implementation of finance transactions repository.
+/// </summary>
+public class FinanceRepository(NexodusDbContext context) : IFinanceRepository
 {
-    private readonly NexodusDbContext _context;
-
-    public FinanceRepository(NexodusDbContext context)
-    {
-        _context = context;
-    }
+    private readonly NexodusDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
 
     public async Task<Finance> AddAsync(Finance finance)
     {
@@ -32,6 +31,7 @@ public class FinanceRepository : IFinanceRepository
     public async Task<IEnumerable<Finance>> GetAllByUserIdAsync(Guid userId)
     {
         return await _context.Finances
+            .AsNoTracking()
             .Where(f => f.UserId == userId)
             .OrderByDescending(f => f.TransactionDate)
             .ToListAsync();

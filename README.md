@@ -4,32 +4,39 @@ Backend API for Nexodus, a personal management application (Diet, Finance, TodoL
 
 ## Tecnologías y Herramientas
 
-*   **.NET 10 (C#)**
-*   **PostgreSQL**
-*   **Entity Framework Core**
-*   **JWT & BCrypt** para Autenticación
-*   **FluentValidation** para la validación de peticiones
-*   **Scalar** para la visualización de la API OpenAPI
+*   **.NET 10 (C# 12+)** con características modernas (Primary Constructors, File-Scoped Namespaces, Collection Expressions).
+*   **PostgreSQL** como motor relacional.
+*   **Entity Framework Core** con consultas optimizadas (`.AsNoTracking()` y carga diferida selectiva).
+*   **JWT & BCrypt** para autenticación y seguridad con `JwtProvider` y `PasswordHasher`.
+*   **AWSSDK.S3** con cliente Singleton administrado y soporte para MinIO / Cloudflare R2 / AWS S3.
+*   **FluentValidation** acoplado mediante Endpoint Filters (`ValidationFilter<T>`).
+*   **Scalar** y OpenAPI nativo de .NET 10 para exploración interactiva de la API.
 
 ## Arquitectura
 
 El proyecto sigue estrictamente los principios de **Clean Architecture**:
-*   `Core/`: Entidades de dominio, Excepciones e Interfaces.
-*   `Application/`: DTOs, Casos de Uso (Servicios) y Validadores.
-*   `Infrastructure/`: Repositorios, Contexto de Base de Datos y Proveedores de Seguridad.
-*   `API/`: Endpoints (Minimal APIs), Middleware de Manejo de Excepciones e Inyección de Dependencias.
+*   `Core/`: Entidades de dominio, Excepciones del catálogo (`ValidationException`, `NotFoundException`, `ConflictException`, `UnauthorizedException`) e Interfaces de repositorio. Cero dependencias externas.
+*   `Application/`: DTOs organizados por módulo, Casos de Uso (Servicios con interfaces e inyección de dependencias `I...Service`) y Validadores FluentValidation.
+*   `Infrastructure/`: Repositorios EF Core, Contexto de Base de Datos (`NexodusDbContext`), Servicios de almacenamiento (`S3StorageService`), Opciones de configuración fuertemente tipadas (`JwtOptions`, `S3Options`) y Seguridad.
+*   `API/`: Minimal APIs delgadas con metadatos OpenAPI (`.WithName()`, `.WithSummary()`, `.Produces<T>()`), Filtros de endpoint (`ValidationFilter<T>`), Extensiones de `ClaimsPrincipal` y Middleware de Excepciones Globales (`GlobalExceptionHandler`).
 
 ## Características Implementadas
 
-*   **Identificadores UUID:** Todas las entidades (Usuarios, Finanzas, Dietas, etc.) utilizan `Guid` como identificadores únicos (`uuid` en Postgres).
+*   **Identificadores UUID:** Todas las entidades (Usuarios, Finanzas, Categorías, Rutinas, Ejercicios, etc.) utilizan `Guid` como identificadores únicos (`uuid` en Postgres).
 *   **Autenticación y Seguridad:** 
-    *   Registro y Login con validación.
-    *   Generación de JWT y Refresh Tokens.
+    *   Registro y Login con validación automática.
+    *   Generación de JWT y Refresh Tokens criptográficamente seguros.
     *   Hasheo de contraseñas utilizando BCrypt.
-*   **Manejo Global de Excepciones:** Middleware interceptor (`GlobalExceptionHandler`) para convertir excepciones personalizadas (`ValidationException`, `NotFoundException`, `UnauthorizedException`, etc.) en respuestas HTTP estandarizadas `ProblemDetails`.
-*   **Validación:** Integración transparente de `FluentValidation` antes de ejecutar la lógica de los controladores.
-*   **Módulo de Finanzas (CRUD Completo):** Endpoints para crear, leer, actualizar, eliminar y obtener resumen mensual de ingresos y gastos.
-*   **Módulo de Categorías (CRUD):** Categorías personalizadas por usuario para uso en transacciones financieras.
+    *   Opciones fuertemente tipadas validadas (`JwtOptions`).
+*   **Manejo Global de Excepciones y ProblemDetails:** Middleware interceptor (`GlobalExceptionHandler`) que captura excepciones controladas de dominio y errores imprevistos, transformándolos en respuestas estandarizadas **RFC 7807 / RFC 9457 ProblemDetails** e integrando logging estructurado con `ILogger`.
+*   **Validación Transparente:** Integración de `ValidationFilter<T>` como filtro de Minimal API para ejecutar validaciones antes de invocar la lógica de negocio.
+*   **Módulo de Finanzas (CRUD Completo):** Endpoints para transacciones y balance mensual. Compatible con tipos bilingües (`Income`/`Expense` e `Ingreso`/`Gasto`; `Tarjeta`/`Card` y `Efectivo`/`Cash`).
+*   **Módulo de Categorías (CRUD):** Categorías personalizadas por usuario para transacciones financieras.
+*   **Módulo de Tareas y Hábitos:** Gestión de tareas puntuales y hábitos recurrentes con seguimiento de rachas (`CurrentStreak`, `HighestStreak`).
+*   **Módulo de Notas y Checklist:** Diario personal y notas con soporte para listas de verificación dinámicas.
+*   **Módulo de Ejercicios y Rutinas:** Catálogo paginado de más de 1,300 ejercicios con generación concurrente y optimizada de URLs pre-firmadas en S3, diseño de rutinas personalizadas y bitácora de entrenamientos.
+
+---
 
 ### Endpoints Disponibles
 
@@ -59,7 +66,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```
 
 **Usuario (`/api/user`)** *(Requiere Autenticación JWT)*
-*   `GET /api/user/me` - Obtiene los datos del usuario autenticado (nombre, email, teléfono).
+*   `GET /api/user/me` - Obtiene los datos del usuario autenticado (nombre, email, teléfono, peso, altura).
 *   `PUT /api/user/me` - Actualiza los datos del usuario autenticado.
     ```json
     {
@@ -77,29 +84,19 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 **Finanzas (`/api/finances`)** *(Requieren Autenticación JWT)*
 *   `GET /api/finances/` - Obtiene todas las finanzas del usuario autenticado.
 *   `GET /api/finances/summary` - Obtiene el resumen mensual (Total de Ingresos, Gastos y Balance).
-*   `GET /api/finances/{id}` - Obtiene los detalles de una transacción financiera específica.
-*   `POST /api/finances/` - Crea una nueva transacción financiera (Ingreso/Gasto).
+*   `GET /api/finances/{id}` - Obtiene los detalles de una transacción específica.
+*   `POST /api/finances/` - Crea una nueva transacción (admite `Ingreso`/`Income` o `Gasto`/`Expense`).
     ```json
     {
-      "transactionType": "Income o Expense",
-      "amount": 0.0,
+      "transactionType": "Income", // o "Ingreso", "Expense", "Gasto"
+      "amount": 1500.50,
       "description": "string", // (Opcional)
       "categoryId": "string (UUID)", // (Opcional)
-      "paymentMethod": "Tarjeta o Efectivo",
-      "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
+      "paymentMethod": "Tarjeta", // o "Card", "Efectivo", "Cash"
+      "transactionDate": "2026-03-15T12:00:00Z" // (Opcional)
     }
     ```
 *   `PUT /api/finances/{id}` - Actualiza una transacción financiera existente.
-    ```json
-    {
-      "transactionType": "Income o Expense",
-      "amount": 0.0,
-      "description": "string", // (Opcional)
-      "categoryId": "string (UUID)", // (Opcional)
-      "paymentMethod": "Tarjeta o Efectivo",
-      "transactionDate": "2024-03-15T12:00:00Z" // (Opcional)
-    }
-    ```
 *   `DELETE /api/finances/{id}` - Elimina una transacción financiera.
 
 **Categorías (`/api/categories`)** *(Requieren Autenticación JWT)*
@@ -114,13 +111,6 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     }
     ```
 *   `PUT /api/categories/{id}` - Actualiza una categoría existente.
-    ```json
-    {
-      "name": "string",
-      "description": "string", // (Opcional)
-      "monthlyLimit": 0.0 // (Opcional)
-    }
-    ```
 *   `DELETE /api/categories/{id}` - Elimina una categoría.
 
 **Lista de Tareas y Hábitos (`/api/todos`)** *(Requieren Autenticación JWT)*
@@ -135,36 +125,21 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "urgent": false, // (Opcional)
       "notificationsEnabled": true, // (Opcional)
       "notificationTime": "08:00", // (Opcional, formato HH:mm)
-      "dueDate": "2024-03-15T12:00:00Z", // (Opcional)
+      "dueDate": "2026-03-15T12:00:00Z", // (Opcional)
       "isHabit": true,
       "frequency": "Daily", // Daily, Weekly, Monthly, Custom
       "customDays": "Lunes,Miércoles" // (Opcional)
     }
     ```
 *   `PUT /api/todos/{id}` - Actualiza una tarea o hábito.
-    ```json
-    {
-      "task": "Leer 20 páginas",
-      "subtitle": "Capítulo 1 y 2",
-      "tag": "Lectura",
-      "urgent": true,
-      "notificationsEnabled": false,
-      "notificationTime": null,
-      "isCompleted": false,
-      "dueDate": "2024-03-15T12:00:00Z",
-      "isHabit": true,
-      "frequency": "Daily",
-      "customDays": null
-    }
-    ```
-*   `POST /api/todos/{id}/complete` - Marca una tarea o hábito como completado hoy (incrementa la racha si es un hábito).
+*   `POST /api/todos/{id}/complete` - Marca una tarea o hábito como completado hoy (incrementa la racha).
 *   `POST /api/todos/{id}/uncompleted` - Desmarca una tarea o hábito completado hoy (restaura la racha anterior).
 *   `DELETE /api/todos/{id}` - Elimina la tarea o hábito.
 
 **Notas y Diario (`/api/notes`)** *(Requieren Autenticación JWT)*
-*   `GET /api/notes/` - Obtiene todas las notas (ideas o diario) del usuario.
+*   `GET /api/notes/` - Obtiene todas las notas del usuario.
 *   `GET /api/notes/{id}` - Obtiene una nota específica por su ID.
-*   `POST /api/notes/` - Crea una nueva nota.
+*   `POST /api/notes/` - Crea una nueva nota o checklist.
     ```json
     {
       "type": "idea o diario",
@@ -175,38 +150,30 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       ]
     }
     ```
-*   `PATCH /api/notes/{id}` - Actualiza una nota.
-    ```json
-    {
-      "title": "string", // (Opcional)
-      "content": "string", // (Opcional)
-      "checklist": [ // (Opcional, actualiza existentes, elimina omitidos e inserta nuevos)
-        { "text": "Hacer la cama", "isCompleted": true }
-      ]
-    }
-    ```
+*   `PATCH /api/notes/{id}` - Actualiza una nota o sus items de checklist.
 *   `DELETE /api/notes/{id}` - Elimina la nota.
 
 **Ejercicios (`/api/exercises`)** *(Requieren Autenticación JWT)*
-*   `GET /api/exercises/` - Obtiene el catálogo de ejercicios (incluye detalles y la URL del GIF en S3).
-*   `GET /api/exercises/{id}` - Obtiene un ejercicio en específico por su ID.
+*   `GET /api/exercises?page=1&pageSize=50` - Obtiene el catálogo paginado de ejercicios con URLs pre-firmadas a S3.
+*   `GET /api/exercises/{id}` - Obtiene un ejercicio específico por su ID.
 
 **Rutinas (`/api/routines`)** *(Requieren Autenticación JWT)*
 *   `GET /api/routines/` - Obtiene todas las rutinas del usuario.
 *   `GET /api/routines/{id}` - Obtiene una rutina específica con todos sus ejercicios.
-*   `POST /api/routines/` - Crea una nueva rutina y asocia sus ejercicios.
+*   `POST /api/routines/` - Crea una nueva rutina y asocia sus ejercicios (con validación de series, reps y peso).
     ```json
     {
       "name": "string",
       "description": "string",
       "difficultyLevel": "string",
-      "targetDay": 1, // (Opcional, 1 al 7)
+      "targetDay": 1, // (1 al 7)
       "exercises": [
         {
           "exerciseId": "string (UUID)",
           "sets": 4,
           "reps": 12,
-          "restTimeInSeconds": 90
+          "restTimeInSeconds": 90,
+          "weight": 25.5
         }
       ]
     }
@@ -228,6 +195,8 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```
 *   `DELETE /api/workouts/{id}` - Elimina un registro de entrenamiento.
 
+---
+
 ## Configuración y Ejecución
 
 1.  **Clonar y configurar el entorno:**
@@ -238,17 +207,18 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     Configura tus credenciales de base de datos PostgreSQL, configuración JWT y **credenciales S3 (AWS SDK / MinIO)** dentro del `.env`.
 
 2.  **Migraciones de Base de Datos y Seed:**
-    El proyecto utiliza Entity Framework Core. Para aplicar la base de datos:
+    Para aplicar las migraciones de Entity Framework Core:
     ```bash
     dotnet ef database update
     ```
-    *Nota: Al correr la aplicación por primera vez, el `DataSeeder` inyectará automáticamente más de 1300 ejercicios desde `BD/Esquemas/exercises.json` a la base de datos.*
+    *Nota: Al correr la aplicación por primera vez, el `DataSeeder` inyectará automáticamente más de 1,300 ejercicios de forma asíncrona desde `BD/Esquemas/exercises.json` a la base de datos.*
+    *Asimismo, en la carpeta `BD/` se encuentran `BD/Script.sql` (esquema DDL completo y sincronizado con PostgreSQL) y `BD/Curls.txt` (colección de comandos cURL listos para probar todos los endpoints).*
 
 3.  **Ejecutar:**
     ```bash
     dotnet run --launch-profile https
     ```
-    Accede a la documentación OpenAPI (Scalar) navegando a la raíz o utilizando los endpoints correspondientes de tu entorno local.
+    Accede a la documentación OpenAPI (Scalar) navegando a la raíz (`/`) de tu servidor local.
 
 ## Docker
 

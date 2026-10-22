@@ -2,19 +2,17 @@ using System;
 using System.Threading.Tasks;
 using Nexodus_Back.Application.DTOs.User;
 using Nexodus_Back.Application.Interfaces;
-using Nexodus_Back.Core.Interfaces;
 using Nexodus_Back.Core.Exceptions;
+using Nexodus_Back.Core.Interfaces;
 
 namespace Nexodus_Back.Application.Services;
 
-public class UserService : IUserService
+/// <summary>
+/// Provides user profile retrieval and modification operations.
+/// </summary>
+public class UserService(IUserRepository userRepository) : IUserService
 {
-    private readonly IUserRepository _userRepository;
-
-    public UserService(IUserRepository userRepository)
-    {
-        _userRepository = userRepository;
-    }
+    private readonly IUserRepository _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
 
     public async Task<UserResponse> GetCurrentUserAsync(string userId)
     {

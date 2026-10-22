@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Nexodus_Back.Core.Entities;
 using Nexodus_Back.Core.Interfaces;
@@ -5,18 +9,17 @@ using Nexodus_Back.Infrastructure.Data;
 
 namespace Nexodus_Back.Infrastructure.Repositories;
 
-public class NoteRepository : INoteRepository
+/// <summary>
+/// Entity Framework implementation of user notes and checklists repository.
+/// </summary>
+public class NoteRepository(NexodusDbContext context) : INoteRepository
 {
-    private readonly NexodusDbContext _context;
-
-    public NoteRepository(NexodusDbContext context)
-    {
-        _context = context;
-    }
+    private readonly NexodusDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
 
     public async Task<IEnumerable<Note>> GetAllByUserIdAsync(Guid userId)
     {
         return await _context.Notes
+            .AsNoTracking()
             .Include(n => n.Checklist)
             .Where(n => n.UserId == userId)
             .OrderByDescending(n => n.CreatedAt)
@@ -39,16 +42,12 @@ public class NoteRepository : INoteRepository
 
     public async Task UpdateAsync(Note note)
     {
-        // NO llamamos a _context.Notes.Update(note) porque la entidad ya está siendo "Trackeada"
-        // al haberla obtenido con GetByIdAndUserIdAsync. Llamar a Update() fuerza un estado "Modified"
-        // incluso para los ChecklistItems nuevos con un Guid generado, causando DbUpdateConcurrencyException.
         await _context.SaveChangesAsync();
     }
 
     public async Task DeleteChecklistItemsAsync(IEnumerable<ChecklistItem> items)
     {
         _context.ChecklistItems.RemoveRange(items);
-        // No llamamos SaveChangesAsync aquí, se llamará dentro de UpdateAsync del servicio.
         await Task.CompletedTask; 
     }
 
