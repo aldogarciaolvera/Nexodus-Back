@@ -10,14 +10,9 @@ using Nexodus_Back.Core.Interfaces;
 
 namespace Nexodus_Back.Application.Services;
 
-public class TodoListService : ITodoListService
+public class TodoListService(ITodoListRepository repository) : ITodoListService
 {
-    private readonly ITodoListRepository _repository;
-
-    public TodoListService(ITodoListRepository repository)
-    {
-        _repository = repository;
-    }
+    private readonly ITodoListRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
 
     public async Task<TodoListDto> CreateAsync(Guid userId, CreateTodoListRequest request)
     {

@@ -1,13 +1,22 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexodus_Back.Core.Entities;
 
 namespace Nexodus_Back.Infrastructure.Data;
 
+/// <summary>
+/// Seeds initial static data into the database asynchronously.
+/// </summary>
 public static class DataSeeder
 {
-    public static async Task SeedExercisesAsync(NexodusDbContext context, string contentRootPath)
+    public static async Task SeedExercisesAsync(NexodusDbContext context, string contentRootPath, ILogger? logger = null)
     {
-        if (context.Exercises.Any())
+        if (await context.Exercises.AnyAsync())
         {
             return; // Ya hay datos
         }
@@ -22,7 +31,7 @@ public static class DataSeeder
 
         if (!File.Exists(filePath))
         {
-            Console.WriteLine("DataSeeder: exercises.json no encontrado.");
+            logger?.LogWarning("DataSeeder: exercises.json no encontrado en {Path}", filePath);
             return;
         }
 
@@ -67,6 +76,6 @@ public static class DataSeeder
 
         await context.Exercises.AddRangeAsync(exercisesToInsert);
         await context.SaveChangesAsync();
-        Console.WriteLine($"DataSeeder: {exercisesToInsert.Count} ejercicios insertados.");
+        logger?.LogInformation("DataSeeder: {Count} ejercicios insertados exitosamente.", exercisesToInsert.Count);
     }
 }

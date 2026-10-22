@@ -1,26 +1,31 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Nexodus_Back.Application.DTOs;
+using Nexodus_Back.Application.Interfaces;
 using Nexodus_Back.Core.Entities;
 using Nexodus_Back.Core.Exceptions;
 using Nexodus_Back.Core.Interfaces;
 
 namespace Nexodus_Back.Application.Services;
 
-public class RoutineService
+/// <summary>
+/// Provides routine management operations and exercise association.
+/// </summary>
+public class RoutineService(
+    IRoutineRepository routineRepository,
+    IExerciseRepository exerciseRepository,
+    IStorageService storageService) : IRoutineService
 {
-    private readonly IRoutineRepository _routineRepository;
-    private readonly IExerciseRepository _exerciseRepository;
-    private readonly IStorageService _storageService;
+    private readonly IRoutineRepository _routineRepository = routineRepository ?? throw new ArgumentNullException(nameof(routineRepository));
+    private readonly IExerciseRepository _exerciseRepository = exerciseRepository ?? throw new ArgumentNullException(nameof(exerciseRepository));
+    private readonly IStorageService _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
 
-    public RoutineService(IRoutineRepository routineRepository, IExerciseRepository exerciseRepository, IStorageService storageService)
+    public async Task<IEnumerable<RoutineDto>> GetAllRoutinesAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        _routineRepository = routineRepository;
-        _exerciseRepository = exerciseRepository;
-        _storageService = storageService;
-    }
-
-    public async Task<IEnumerable<RoutineDto>> GetAllRoutinesAsync(Guid userId)
-    {
-        var routines = await _routineRepository.GetAllByUserIdAsync(userId);
+        var routines = await _routineRepository.GetAllByUserIdAsync(userId, cancellationToken);
         
         return routines.Select(r => new RoutineDto(
             r.Id,
@@ -28,49 +33,53 @@ public class RoutineService
             r.Description,
             r.DifficultyLevel,
             r.TargetDay,
-            new List<RoutineExerciseDto>(), // Sin detalle para listado general por rendimiento
+            [], // Sin detalle para listado general por rendimiento
             r.CreatedAt,
             r.UpdatedAt
         ));
     }
 
-    public async Task<RoutineDto> GetRoutineByIdAsync(Guid id, Guid userId)
+    public async Task<RoutineDto> GetRoutineByIdAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
     {
-        var routine = await _routineRepository.GetByIdAsync(id, userId);
+        var routine = await _routineRepository.GetByIdAsync(id, userId, cancellationToken);
         if (routine == null) throw new NotFoundException($"Routine with ID {id} not found.");
 
-        var exercisesList = new List<RoutineExerciseDto>();
-        foreach (var re in routine.RoutineExercises)
+        var exerciseTasks = routine.RoutineExercises.Select(async re =>
         {
-            string? gifUrl = null, thumbUrl = null;
+            ExerciseDto? exDto = null;
             if (re.Exercise != null)
             {
-                gifUrl = string.IsNullOrEmpty(re.Exercise.GifS3Key) ? null : await _storageService.GetFileUrlAsync(re.Exercise.GifS3Key);
-                thumbUrl = string.IsNullOrEmpty(re.Exercise.ThumbS3Key) ? null : await _storageService.GetFileUrlAsync(re.Exercise.ThumbS3Key);
+                var gifTask = string.IsNullOrEmpty(re.Exercise.GifS3Key) ? null : _storageService.GetFileUrlAsync(re.Exercise.GifS3Key);
+                var thumbTask = string.IsNullOrEmpty(re.Exercise.ThumbS3Key) ? null : _storageService.GetFileUrlAsync(re.Exercise.ThumbS3Key);
+
+                var gifUrl = gifTask != null ? await gifTask : null;
+                var thumbUrl = thumbTask != null ? await thumbTask : null;
+
+                exDto = new ExerciseDto(
+                    re.Exercise.Id,
+                    re.Exercise.ExternalId,
+                    re.Exercise.Name,
+                    re.Exercise.BodyPart,
+                    re.Exercise.Muscle,
+                    re.Exercise.Equipment,
+                    re.Exercise.Category,
+                    re.Exercise.Instructions,
+                    gifUrl,
+                    thumbUrl
+                );
             }
 
-            var exDto = re.Exercise == null ? null : new ExerciseDto(
-                re.Exercise.Id,
-                re.Exercise.ExternalId,
-                re.Exercise.Name,
-                re.Exercise.BodyPart,
-                re.Exercise.Muscle,
-                re.Exercise.Equipment,
-                re.Exercise.Category,
-                re.Exercise.Instructions,
-                gifUrl,
-                thumbUrl
-            );
-
-            exercisesList.Add(new RoutineExerciseDto(
+            return new RoutineExerciseDto(
                 re.ExerciseId,
                 re.Sets,
                 re.Reps,
                 re.RestTimeInSeconds,
                 re.Weight,
                 exDto
-            ));
-        }
+            );
+        });
+
+        var exercisesList = (await Task.WhenAll(exerciseTasks)).ToList();
 
         return new RoutineDto(
             routine.Id,
@@ -84,7 +93,7 @@ public class RoutineService
         );
     }
 
-    public async Task<RoutineDto> CreateRoutineAsync(Guid userId, CreateRoutineDto dto)
+    public async Task<RoutineDto> CreateRoutineAsync(Guid userId, CreateRoutineDto dto, CancellationToken cancellationToken = default)
     {
         var routine = new Routine
         {
@@ -97,7 +106,7 @@ public class RoutineService
 
         foreach (var ex in dto.Exercises)
         {
-            var exerciseExists = await _exerciseRepository.GetByIdAsync(ex.ExerciseId);
+            var exerciseExists = await _exerciseRepository.GetByIdAsync(ex.ExerciseId, cancellationToken);
             if (exerciseExists == null) throw new ValidationException($"Exercise with ID {ex.ExerciseId} does not exist.");
 
             routine.RoutineExercises.Add(new RoutineExercise
@@ -110,7 +119,7 @@ public class RoutineService
             });
         }
 
-        var created = await _routineRepository.AddAsync(routine);
+        var created = await _routineRepository.AddAsync(routine, cancellationToken);
         
         return new RoutineDto(
             created.Id,
@@ -118,23 +127,23 @@ public class RoutineService
             created.Description,
             created.DifficultyLevel,
             created.TargetDay,
-            new List<RoutineExerciseDto>(),
+            [],
             created.CreatedAt,
             created.UpdatedAt
         );
     }
     
-    public async Task DeleteRoutineAsync(Guid id, Guid userId)
+    public async Task DeleteRoutineAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
     {
-        var routine = await _routineRepository.GetByIdAsync(id, userId);
+        var routine = await _routineRepository.GetByIdAsync(id, userId, cancellationToken);
         if (routine == null) throw new NotFoundException($"Routine with ID {id} not found.");
 
-        await _routineRepository.DeleteAsync(routine);
+        await _routineRepository.DeleteAsync(routine, cancellationToken);
     }
 
-    public async Task<RoutineDto> UpdateRoutineAsync(Guid id, Guid userId, CreateRoutineDto dto)
+    public async Task<RoutineDto> UpdateRoutineAsync(Guid id, Guid userId, CreateRoutineDto dto, CancellationToken cancellationToken = default)
     {
-        var routine = await _routineRepository.GetByIdAsync(id, userId);
+        var routine = await _routineRepository.GetByIdAsync(id, userId, cancellationToken);
         if (routine == null) throw new NotFoundException($"Routine with ID {id} not found.");
 
         routine.Name = dto.Name;
@@ -147,7 +156,7 @@ public class RoutineService
 
         foreach (var ex in dto.Exercises)
         {
-            var exerciseExists = await _exerciseRepository.GetByIdAsync(ex.ExerciseId);
+            var exerciseExists = await _exerciseRepository.GetByIdAsync(ex.ExerciseId, cancellationToken);
             if (exerciseExists == null) throw new ValidationException($"Exercise with ID {ex.ExerciseId} does not exist.");
 
             routine.RoutineExercises.Add(new RoutineExercise
@@ -160,8 +169,8 @@ public class RoutineService
             });
         }
 
-        await _routineRepository.UpdateAsync(routine);
+        await _routineRepository.UpdateAsync(routine, cancellationToken);
 
-        return await GetRoutineByIdAsync(id, userId);
+        return await GetRoutineByIdAsync(id, userId, cancellationToken);
     }
 }

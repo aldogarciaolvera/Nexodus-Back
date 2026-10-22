@@ -1,11 +1,14 @@
+using System;
+using System.Collections.Generic;
 using System.Security.Claims;
-using FluentValidation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using Nexodus_Back.Application.DTOs.Finance;
+using Nexodus_Back.API.Extensions;
+using Nexodus_Back.API.Filters;
 using Nexodus_Back.Application.DTOs.Common;
-using Nexodus_Back.Application.Services;
+using Nexodus_Back.Application.DTOs.Finance;
+using Nexodus_Back.Application.Interfaces;
 
 namespace Nexodus_Back.API.Endpoints;
 
@@ -14,91 +17,74 @@ public static class FinanceEndpoints
     public static void MapFinanceEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/finances")
-            .RequireAuthorization()
-            .WithTags("Finances");
+            .WithTags("Finances")
+            .RequireAuthorization();
 
-        group.MapPost("/", async (
-            CreateFinanceRequest request, 
-            IValidator<CreateFinanceRequest> validator, 
-            IFinanceService financeService, 
-            ClaimsPrincipal user) =>
+        group.MapPost("/", async (CreateFinanceRequest request, IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var validationResult = await validator.ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                var errors = validationResult.Errors
-                    .GroupBy(x => x.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(x => x.ErrorMessage).ToArray());
-                throw new Core.Exceptions.ValidationException(errors);
-            }
-
-            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userIdStr, out var userId))
-                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
+            var userId = user.GetUserId();
             var result = await financeService.CreateAsync(userId, request);
-            
             return Results.Created($"/api/finances/{result.Id}", ApiResponse<FinanceDto>.Success(result, 201));
-        });
+        })
+        .AddEndpointFilter<ValidationFilter<CreateFinanceRequest>>()
+        .WithName("CreateFinance")
+        .WithSummary("Registra una nueva transacción financiera (Ingreso o Gasto)")
+        .Produces<ApiResponse<FinanceDto>>(StatusCodes.Status201Created)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         group.MapGet("/", async (IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userIdStr, out var userId))
-                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
+            var userId = user.GetUserId();
             var finances = await financeService.GetAllByUserIdAsync(userId);
             return Results.Ok(ApiResponse<IEnumerable<FinanceDto>>.Success(finances));
-        });
+        })
+        .WithName("GetAllFinances")
+        .WithSummary("Obtiene todas las transacciones financieras del usuario")
+        .Produces<ApiResponse<IEnumerable<FinanceDto>>>(StatusCodes.Status200OK);
 
         group.MapGet("/summary", async (IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userIdStr, out var userId))
-                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
+            var userId = user.GetUserId();
             var summary = await financeService.GetSummaryAsync(userId);
             return Results.Ok(ApiResponse<FinanceSummaryDto>.Success(summary));
-        });
+        })
+        .WithName("GetFinanceSummary")
+        .WithSummary("Obtiene el resumen financiero (total de ingresos, gastos y balance)")
+        .Produces<ApiResponse<FinanceSummaryDto>>(StatusCodes.Status200OK);
 
-        group.MapGet("/{id}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user) =>
+        group.MapGet("/{id:guid}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userIdStr, out var userId))
-                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
+            var userId = user.GetUserId();
             var finance = await financeService.GetByIdAsync(userId, id);
             return Results.Ok(ApiResponse<FinanceDto>.Success(finance));
-        });
+        })
+        .WithName("GetFinanceById")
+        .WithSummary("Obtiene el detalle de una transacción financiera")
+        .Produces<ApiResponse<FinanceDto>>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPut("/{id}", async (
-            Guid id, 
-            UpdateFinanceRequest request, 
-            IValidator<UpdateFinanceRequest> validator, 
-            IFinanceService financeService, 
-            ClaimsPrincipal user) =>
+        group.MapPut("/{id:guid}", async (Guid id, UpdateFinanceRequest request, IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var validationResult = await validator.ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                var errors = validationResult.Errors
-                    .GroupBy(x => x.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(x => x.ErrorMessage).ToArray());
-                throw new Core.Exceptions.ValidationException(errors);
-            }
-
-            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userIdStr, out var userId))
-                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
+            var userId = user.GetUserId();
             var result = await financeService.UpdateAsync(userId, id, request);
-            
             return Results.Ok(ApiResponse<FinanceDto>.Success(result));
-        });
+        })
+        .AddEndpointFilter<ValidationFilter<UpdateFinanceRequest>>()
+        .WithName("UpdateFinance")
+        .WithSummary("Actualiza los datos de una transacción financiera existente")
+        .Produces<ApiResponse<FinanceDto>>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapDelete("/{id}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user) =>
+        group.MapDelete("/{id:guid}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user) =>
         {
-            var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userIdStr, out var userId))
-                throw new Core.Exceptions.UnauthorizedException("ID de usuario no encontrado en el token.");
+            var userId = user.GetUserId();
             await financeService.DeleteAsync(userId, id);
-            
             return Results.Ok(ApiResponse<string>.Success("Registro eliminado"));
-        });
+        })
+        .WithName("DeleteFinance")
+        .WithSummary("Elimina una transacción financiera")
+        .Produces<ApiResponse<string>>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound);
     }
 }

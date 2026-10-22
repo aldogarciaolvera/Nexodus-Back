@@ -3,43 +3,46 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Nexodus_Back.Core.Entities;
 using Nexodus_Back.Core.Interfaces;
+using Nexodus_Back.Infrastructure.Configuration;
 
 namespace Nexodus_Back.Infrastructure.Security;
 
-public class JwtProvider : IJwtProvider
+/// <summary>
+/// Generates JSON Web Tokens (JWT) and cryptographically secure refresh tokens.
+/// </summary>
+public class JwtProvider(IOptions<JwtOptions> options) : IJwtProvider
 {
+    private readonly JwtOptions _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+
     public string GenerateToken(User user)
     {
-        var secret = Environment.GetEnvironmentVariable("JWT_SECRET");
-        var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
-        var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
-        var expirationMinutesString = Environment.GetEnvironmentVariable("JWT_EXPIRATION_MINUTES");
-        
-        if (string.IsNullOrEmpty(secret)) throw new InvalidOperationException("JWT_SECRET is not set.");
-        
-        var expirationMinutes = int.TryParse(expirationMinutesString, out var parsed) ? parsed : 60;
+        if (string.IsNullOrEmpty(_options.Secret))
+        {
+            throw new InvalidOperationException("JWT Secret is not configured.");
+        }
 
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.UTF8.GetBytes(secret);
-        
+        var key = Encoding.UTF8.GetBytes(_options.Secret);
         var jti = Guid.NewGuid().ToString();
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
-            Subject = new ClaimsIdentity(new[]
-            {
+            Subject = new ClaimsIdentity(
+            [
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Role, user.Role),
                 new Claim(JwtRegisteredClaimNames.Jti, jti)
-            }),
-            Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
-            Issuer = issuer,
-            Audience = audience,
+            ]),
+            Expires = DateTime.UtcNow.AddMinutes(_options.ExpirationMinutes),
+            Issuer = _options.Issuer,
+            Audience = _options.Audience,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };
 
@@ -50,9 +53,8 @@ public class JwtProvider : IJwtProvider
     public RefreshToken GenerateRefreshToken(User user)
     {
         var randomNumber = new byte[32];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(randomNumber);
-        
+        RandomNumberGenerator.Fill(randomNumber);
+
         return new RefreshToken
         {
             Token = Convert.ToBase64String(randomNumber),

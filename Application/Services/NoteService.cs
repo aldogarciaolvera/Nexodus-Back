@@ -6,14 +6,9 @@ using Nexodus_Back.Core.Interfaces;
 
 namespace Nexodus_Back.Application.Services;
 
-public class NoteService : INoteService
+public class NoteService(INoteRepository repository) : INoteService
 {
-    private readonly INoteRepository _repository;
-
-    public NoteService(INoteRepository repository)
-    {
-        _repository = repository;
-    }
+    private readonly INoteRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
 
     public async Task<IEnumerable<NoteDto>> GetAllNotesAsync(Guid userId)
     {

@@ -9,14 +9,12 @@ using Nexodus_Back.Infrastructure.Data;
 
 namespace Nexodus_Back.Infrastructure.Repositories;
 
-public class TodoListRepository : ITodoListRepository
+/// <summary>
+/// Entity Framework implementation of user tasks and habits repository.
+/// </summary>
+public class TodoListRepository(NexodusDbContext context) : ITodoListRepository
 {
-    private readonly NexodusDbContext _context;
-
-    public TodoListRepository(NexodusDbContext context)
-    {
-        _context = context;
-    }
+    private readonly NexodusDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
 
     public async Task<TodoList> CreateAsync(TodoList todo)
     {
@@ -28,6 +26,7 @@ public class TodoListRepository : ITodoListRepository
     public async Task<IEnumerable<TodoList>> GetAllByUserIdAsync(Guid userId)
     {
         return await _context.TodoList
+            .AsNoTracking()
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();

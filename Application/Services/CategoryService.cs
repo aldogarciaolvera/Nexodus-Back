@@ -10,14 +10,12 @@ using Nexodus_Back.Core.Interfaces;
 
 namespace Nexodus_Back.Application.Services;
 
-public class CategoryService : ICategoryService
+/// <summary>
+/// Provides category management operations for categorizing financial movements.
+/// </summary>
+public class CategoryService(ICategoryRepository categoryRepository) : ICategoryService
 {
-    private readonly ICategoryRepository _categoryRepository;
-
-    public CategoryService(ICategoryRepository categoryRepository)
-    {
-        _categoryRepository = categoryRepository;
-    }
+    private readonly ICategoryRepository _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
 
     public async Task<CategoryDto> CreateAsync(Guid userId, CreateCategoryRequest request)
     {
@@ -79,7 +77,6 @@ public class CategoryService : ICategoryService
             throw new UnauthorizedException("No estás autorizado para modificar este registro.");
         }
 
-        // Si cambia el nombre, validar que no exista
         if (category.Name.ToLower() != request.Name.ToLower())
         {
             var existingCategory = await _categoryRepository.GetByNameAsync(userId, request.Name);

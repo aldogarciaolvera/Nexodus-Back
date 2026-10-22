@@ -4,10 +4,22 @@ CREATE TABLE "Users" (
     "Email" VARCHAR(100) UNIQUE NOT NULL,
     "PasswordHash" VARCHAR(255) NOT NULL,
     "PhoneNumber" VARCHAR(20) NULL,
+    "Role" VARCHAR(50) NOT NULL DEFAULT 'User',
     "Weight" DOUBLE PRECISION DEFAULT 0,
     "Height" DOUBLE PRECISION DEFAULT 0,
     "CreatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "RefreshTokens" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "Token" VARCHAR(255) NOT NULL,
+    "JwtId" VARCHAR(255) NOT NULL,
+    "CreationDate" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "ExpiryDate" TIMESTAMPTZ NOT NULL,
+    "Used" BOOLEAN NOT NULL DEFAULT FALSE,
+    "Invalidated" BOOLEAN NOT NULL DEFAULT FALSE,
+    "UserId" UUID NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE
 );
 
 CREATE TABLE TodoList (
@@ -53,23 +65,24 @@ CREATE TABLE Diet (
     UpdatedAt TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE categories (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES "Users"("Id"),
-  name text not null,
-  description text,
-  MonthlyLimit NUMERIC(10, 2),
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE Categories (
+    Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    UserId UUID REFERENCES "Users"("Id") ON DELETE CASCADE,
+    Name TEXT NOT NULL,
+    Description TEXT,
+    MonthlyLimit NUMERIC(10, 2),
+    CreatedAt TIMESTAMPTZ DEFAULT NOW(),
+    UpdatedAt TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT "UQ_Categories_UserId_Name" UNIQUE (UserId, Name)
 );
 
 CREATE TABLE Finances (
     Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    UserId UUID REFERENCES "Users"("Id"),
+    UserId UUID REFERENCES "Users"("Id") ON DELETE CASCADE,
     TransactionType TEXT NOT NULL, -- ingreso o gasto
     Amount NUMERIC(10, 2) NOT NULL,
     Description TEXT,
-    CategoryId UUID REFERENCES categories(id) ON DELETE SET NULL,
+    CategoryId UUID REFERENCES Categories(Id) ON DELETE SET NULL,
     PaymentMethod TEXT NOT NULL DEFAULT '',
     TransactionDate TIMESTAMPTZ DEFAULT NOW(),
     CreatedAt TIMESTAMPTZ DEFAULT NOW(),
@@ -123,6 +136,7 @@ CREATE TABLE RoutineExercises (
     Sets INT NOT NULL DEFAULT 1,
     Reps INT NOT NULL DEFAULT 1,
     RestTimeInSeconds INT NOT NULL DEFAULT 60,
+    Weight DOUBLE PRECISION NOT NULL DEFAULT 0,
     PRIMARY KEY (RoutineId, ExerciseId)
 );
 
