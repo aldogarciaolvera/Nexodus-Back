@@ -7,4 +7,5 @@ public class UserResponse
     public string? PhoneNumber { get; set; }
     public double Weight { get; set; }
     public double Height { get; set; }
+    public bool Dieta { get; set; }
 }

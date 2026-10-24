@@ -66,7 +66,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```
 
 **Usuario (`/api/user`)** *(Requiere Autenticación JWT)*
-*   `GET /api/user/me` - Obtiene los datos del usuario autenticado (nombre, email, teléfono, peso, altura).
+*   `GET /api/user/me` - Obtiene los datos del usuario autenticado (nombre, email, teléfono, peso, altura, dieta).
 *   `PUT /api/user/me` - Actualiza los datos del usuario autenticado.
     ```json
     {
@@ -74,7 +74,8 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "email": "new@example.com",
       "phoneNumber": "0987654321", // (Opcional)
       "weight": 70.5, // (Opcional, en kg)
-      "height": 1.75 // (Opcional, en metros)
+      "height": 1.75, // (Opcional, en metros)
+      "dieta": true // (Opcional, booleano para indicar si cuenta con dieta configurada)
     }
     ```
 
@@ -194,6 +195,29 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     }
     ```
 *   `DELETE /api/workouts/{id}` - Elimina un registro de entrenamiento.
+
+**Nutrición y Dieta (`/api/diet`)** *(Requieren Autenticación JWT)*
+*   **Metas y Biometría:**
+    *   `GET /api/diet/target` - Obtiene las metas nutricionales y ventana de ingesta del usuario.
+    *   `PUT /api/diet/target` - Actualiza manualmente calorías, macros (proteína, carbs, grasas), agua y protocolo de ayuno.
+    *   `POST /api/diet/calculate-target` - Calcula TDEE y recomendación de macros según peso, altura, edad, sexo biológico, nivel de actividad y objetivo (`Cut`, `Maintenance`, `Bulk`).
+*   **Comidas y Resumen Diario:**
+    *   `GET /api/diet/daily?date=yyyy-MM-dd` - Obtiene resumen diario consolidado (totales de calorías, macros, agua, comidas agrupadas por tipo y metas activas).
+    *   `POST /api/diet/meals` - Registra una comida con sus ingredientes (`Items`).
+    *   `PUT /api/diet/meals/{id}` - Modifica alimentos, cantidades o marca la comida como completada.
+    *   `DELETE /api/diet/meals/{id}` - Elimina una comida del registro diario.
+*   **Catálogo de Alimentos:**
+    *   `GET /api/diet/foods/search?query=pechuga&page=1&pageSize=20` - Búsqueda paginada de alimentos por nombre o marca.
+    *   `GET /api/diet/foods/barcode/{barcode}` - Búsqueda instantánea por código de barras (EAN/UPC).
+    *   `POST /api/diet/foods` - Crea un alimento personalizado con sus valores nutricionales por porción.
+*   **Hidratación:**
+    *   `GET /api/diet/water?date=yyyy-MM-dd` - Retorna los mililitros consumidos en la fecha y el porcentaje alcanzado.
+    *   `POST /api/diet/water` - Suma una ingesta rápida de agua (ej. +250 ml o +500 ml).
+    *   `PUT /api/diet/water/set` - Ajusta el total exacto consumido para la fecha.
+*   **Ayuno Intermitente:**
+    *   `GET /api/diet/fasting/status` - Estado en vivo del ayuno (horas transcurridas, restantes, % de progreso y hora estimada de finalización).
+    *   `POST /api/diet/fasting/start` - Inicia una sesión de ayuno con protocolo (ej. `16:8`) y horas objetivo.
+    *   `POST /api/diet/fasting/stop` - Concluye la sesión de ayuno activa y abre la ventana de ingesta.
 
 ---
 

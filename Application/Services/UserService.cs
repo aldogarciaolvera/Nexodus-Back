@@ -33,7 +33,8 @@ public class UserService(IUserRepository userRepository) : IUserService
             Email = user.Email,
             PhoneNumber = user.PhoneNumber,
             Weight = user.Weight,
-            Height = user.Height
+            Height = user.Height,
+            Dieta = user.Dieta
         };
     }
 
@@ -73,6 +74,10 @@ public class UserService(IUserRepository userRepository) : IUserService
         user.PhoneNumber = request.PhoneNumber;
         user.Weight = request.Weight;
         user.Height = request.Height;
+        if (request.Dieta.HasValue)
+        {
+            user.Dieta = request.Dieta.Value;
+        }
         user.UpdatedAt = DateTime.UtcNow;
 
         await _userRepository.UpdateAsync(user);
@@ -83,7 +88,8 @@ public class UserService(IUserRepository userRepository) : IUserService
             Email = user.Email,
             PhoneNumber = user.PhoneNumber,
             Weight = user.Weight,
-            Height = user.Height
+            Height = user.Height,
+            Dieta = user.Dieta
         };
     }
 }

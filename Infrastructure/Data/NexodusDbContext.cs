@@ -13,6 +13,12 @@ public class NexodusDbContext : DbContext
     public DbSet<TodoList> TodoList { get; set; } = null!;
     public DbSet<Workout> Workouts { get; set; } = null!;
     public DbSet<Diet> Diet { get; set; } = null!;
+    public DbSet<DietTarget> DietTargets { get; set; } = null!;
+    public DbSet<Food> Foods { get; set; } = null!;
+    public DbSet<Meal> Meals { get; set; } = null!;
+    public DbSet<MealItem> MealItems { get; set; } = null!;
+    public DbSet<WaterLog> WaterLogs { get; set; } = null!;
+    public DbSet<FastingLog> FastingLogs { get; set; } = null!;
     public DbSet<Finance> Finances { get; set; } = null!;
     public DbSet<Category> Categories { get; set; } = null!;
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
@@ -79,5 +85,35 @@ public class NexodusDbContext : DbContext
             .WithMany()
             .HasForeignKey(wl => wl.RoutineId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DietTarget>(entity =>
+        {
+            entity.HasIndex(dt => dt.UserId).IsUnique();
+        });
+
+        modelBuilder.Entity<Food>(entity =>
+        {
+            entity.HasIndex(f => f.Barcode);
+            entity.HasIndex(f => f.Name);
+        });
+
+        modelBuilder.Entity<Meal>(entity =>
+        {
+            entity.HasIndex(m => new { m.UserId, m.Date });
+            entity.HasMany(m => m.Items)
+                .WithOne(i => i.Meal)
+                .HasForeignKey(i => i.MealId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WaterLog>(entity =>
+        {
+            entity.HasIndex(w => new { w.UserId, w.Date }).IsUnique();
+        });
+
+        modelBuilder.Entity<FastingLog>(entity =>
+        {
+            entity.HasIndex(fl => new { fl.UserId, fl.IsActive });
+        });
     }
 }

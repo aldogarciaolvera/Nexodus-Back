@@ -41,7 +41,8 @@ curl -X PUT http://localhost:5079/api/user/me \
   "email": "new@example.com",
   "phoneNumber": "0987654321",
   "weight": 70.5,
-  "height": 1.75
+  "height": 1.75,
+  "dieta": true
 }'
 
 
@@ -279,3 +280,181 @@ curl -X POST http://localhost:5079/api/workouts \
 # Delete Workout Log
 curl -X DELETE http://localhost:5079/api/workouts/WORKOUT_LOG_ID \
 -H "Authorization: Bearer <TOKEN>"
+
+### DIET & NUTRITION ENDPOINTS ###
+# IMPORTANT: Replace <TOKEN> with a valid JWT token obtained from the Login endpoint.
+
+# --- Perfil y Metas Nutricionales ---
+
+# 1. Obtener Metas Nutricionales
+curl -X GET http://localhost:5079/api/diet/target \
+-H "Authorization: Bearer <TOKEN>"
+
+# 2. Actualizar Metas Nutricionales
+curl -X PUT http://localhost:5079/api/diet/target \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "targetCalories": 2200,
+  "proteinGrams": 160,
+  "carbsGrams": 220,
+  "fatGrams": 70,
+  "waterTargetMl": 3000,
+  "fastingProtocol": "16:8",
+  "eatingWindowStart": "12:00",
+  "eatingWindowEnd": "20:00"
+}'
+
+# 3. Calcular Metas Sugeridas según Biométricos (TDEE / Macros)
+curl -X POST http://localhost:5079/api/diet/calculate-target \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "weight": 75.5,
+  "height": 178,
+  "age": 26,
+  "biologicalSex": "Male",
+  "activityLevel": "Moderate",
+  "goal": "Cut"
+}'
+
+# --- Registro Diario y Comidas ---
+
+# 4. Obtener Resumen Diario de Dieta (Comidas, Totales y Metas)
+curl -X GET "http://localhost:5079/api/diet/daily?date=2026-10-23" \
+-H "Authorization: Bearer <TOKEN>"
+
+# 5. Registrar una Comida
+curl -X POST http://localhost:5079/api/diet/meals \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "date": "2026-10-23",
+  "mealType": "Breakfast",
+  "name": "Overnight Oats & Whey",
+  "time": "08:15",
+  "isCompleted": true,
+  "items": [
+    {
+      "foodId": null,
+      "foodName": "Avena en hojuelas",
+      "quantity": 80,
+      "unit": "g",
+      "calories": 300,
+      "protein": 10,
+      "carbs": 54,
+      "fat": 5
+    },
+    {
+      "foodId": null,
+      "foodName": "Proteína Whey Vainilla",
+      "quantity": 30,
+      "unit": "g",
+      "calories": 120,
+      "protein": 24,
+      "carbs": 2,
+      "fat": 1.5
+    }
+  ]
+}'
+
+# 6. Actualizar una Comida
+# Reemplazar MEAL_ID con un UUID válido
+curl -X PUT http://localhost:5079/api/diet/meals/MEAL_ID \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "mealType": "Breakfast",
+  "name": "Overnight Oats con Frutos Rojos",
+  "time": "08:30",
+  "isCompleted": true,
+  "items": [
+    {
+      "foodId": null,
+      "foodName": "Avena en hojuelas",
+      "quantity": 100,
+      "unit": "g",
+      "calories": 375,
+      "protein": 12.5,
+      "carbs": 67.5,
+      "fat": 6.2
+    }
+  ]
+}'
+
+# 7. Eliminar una Comida
+# Reemplazar MEAL_ID con un UUID válido
+curl -X DELETE http://localhost:5079/api/diet/meals/MEAL_ID \
+-H "Authorization: Bearer <TOKEN>"
+
+# --- Catálogo de Alimentos ---
+
+# 8. Buscar Alimentos en el Catálogo
+curl -X GET "http://localhost:5079/api/diet/foods/search?query=pechuga&page=1&pageSize=20" \
+-H "Authorization: Bearer <TOKEN>"
+
+# 9. Consultar Alimento por Código de Barras
+curl -X GET http://localhost:5079/api/diet/foods/barcode/7501000111222 \
+-H "Authorization: Bearer <TOKEN>"
+
+# 10. Crear Alimento Personalizado
+curl -X POST http://localhost:5079/api/diet/foods \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "name": "Pechuga de Pollo Cocida",
+  "brand": "Bachoco",
+  "barcode": "7501000111222",
+  "servingSize": 100,
+  "servingUnit": "g",
+  "calories": 165,
+  "protein": 31,
+  "carbs": 0,
+  "fat": 3.6,
+  "sodiumMg": 74,
+  "potassiumMg": 256
+}'
+
+# --- Hidratación ---
+
+# 11. Obtener Consumo de Agua Diario
+curl -X GET "http://localhost:5079/api/diet/water?date=2026-10-23" \
+-H "Authorization: Bearer <TOKEN>"
+
+# 12. Agregar Agua Rápida (+ml)
+curl -X POST http://localhost:5079/api/diet/water \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "date": "2026-10-23",
+  "amountMl": 250
+}'
+
+# 13. Ajustar Total de Agua
+curl -X PUT http://localhost:5079/api/diet/water/set \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "date": "2026-10-23",
+  "totalMl": 2000
+}'
+
+# --- Ayuno Intermitente ---
+
+# 14. Obtener Estado en Vivo del Ayuno
+curl -X GET http://localhost:5079/api/diet/fasting/status \
+-H "Authorization: Bearer <TOKEN>"
+
+# 15. Iniciar Sesión de Ayuno
+curl -X POST http://localhost:5079/api/diet/fasting/start \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "targetHours": 16,
+  "fastingProtocol": "16:8"
+}'
+
+# 16. Concluir Sesión de Ayuno
+curl -X POST http://localhost:5079/api/diet/fasting/stop \
+-H "Authorization: Bearer <TOKEN>"
+

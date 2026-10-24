@@ -7,6 +7,7 @@ CREATE TABLE "Users" (
     "Role" VARCHAR(50) NOT NULL DEFAULT 'User',
     "Weight" DOUBLE PRECISION DEFAULT 0,
     "Height" DOUBLE PRECISION DEFAULT 0,
+    "Dieta" BOOLEAN NOT NULL DEFAULT FALSE,
     "CreatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "UpdatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -148,4 +149,93 @@ CREATE TABLE "WorkoutLogs" (
     "CompletedExercisesCount" INT NOT NULL,
     "DateCompleted" TIMESTAMPTZ DEFAULT NOW(),
     "CreatedAt" TIMESTAMPTZ DEFAULT NOW()
-);
+);
+
+CREATE TABLE "DietTargets" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "UserId" UUID NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+    "TargetCalories" DOUBLE PRECISION NOT NULL,
+    "ProteinGrams" DOUBLE PRECISION NOT NULL,
+    "CarbsGrams" DOUBLE PRECISION NOT NULL,
+    "FatGrams" DOUBLE PRECISION NOT NULL,
+    "WaterTargetMl" DOUBLE PRECISION NOT NULL,
+    "FastingProtocol" TEXT NOT NULL DEFAULT 'None',
+    "EatingWindowStart" TEXT NOT NULL DEFAULT '12:00',
+    "EatingWindowEnd" TEXT NOT NULL DEFAULT '20:00',
+    "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "UpdatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT "UQ_DietTargets_UserId" UNIQUE ("UserId")
+);
+
+CREATE TABLE "Foods" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "Name" TEXT NOT NULL,
+    "Brand" TEXT,
+    "Barcode" TEXT,
+    "ServingSize" DOUBLE PRECISION NOT NULL DEFAULT 100,
+    "ServingUnit" TEXT NOT NULL DEFAULT 'g',
+    "Calories" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Protein" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Carbs" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Fat" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Fiber" DOUBLE PRECISION,
+    "SodiumMg" DOUBLE PRECISION,
+    "PotassiumMg" DOUBLE PRECISION,
+    "IsCustom" BOOLEAN NOT NULL DEFAULT FALSE,
+    "UserId" UUID REFERENCES "Users"("Id") ON DELETE SET NULL,
+    "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX "IX_Foods_Barcode" ON "Foods"("Barcode");
+CREATE INDEX "IX_Foods_Name" ON "Foods"("Name");
+
+CREATE TABLE "Meals" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "UserId" UUID NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+    "Date" TEXT NOT NULL,
+    "MealType" TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
+    "Time" TEXT NOT NULL,
+    "IsCompleted" BOOLEAN NOT NULL DEFAULT FALSE,
+    "Calories" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Protein" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Carbs" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Fat" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "UpdatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX "IX_Meals_UserId_Date" ON "Meals"("UserId", "Date");
+
+CREATE TABLE "MealItems" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "MealId" UUID NOT NULL REFERENCES "Meals"("Id") ON DELETE CASCADE,
+    "FoodId" UUID REFERENCES "Foods"("Id") ON DELETE SET NULL,
+    "FoodName" TEXT NOT NULL,
+    "Quantity" DOUBLE PRECISION NOT NULL,
+    "Unit" TEXT NOT NULL DEFAULT 'g',
+    "Calories" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Protein" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Carbs" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Fat" DOUBLE PRECISION NOT NULL DEFAULT 0
+);
+CREATE INDEX "IX_MealItems_MealId" ON "MealItems"("MealId");
+
+CREATE TABLE "WaterLogs" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "UserId" UUID NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+    "Date" TEXT NOT NULL,
+    "ConsumedMl" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "UpdatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT "UQ_WaterLogs_UserId_Date" UNIQUE ("UserId", "Date")
+);
+
+CREATE TABLE "FastingLogs" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "UserId" UUID NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+    "StartTime" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "EndTime" TIMESTAMPTZ,
+    "TargetHours" DOUBLE PRECISION NOT NULL DEFAULT 16,
+    "FastingProtocol" TEXT NOT NULL DEFAULT '16:8',
+    "IsActive" BOOLEAN NOT NULL DEFAULT TRUE,
+    "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX "IX_FastingLogs_UserId_IsActive" ON "FastingLogs"("UserId", "IsActive");

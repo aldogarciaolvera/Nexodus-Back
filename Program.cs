@@ -97,6 +97,11 @@ builder.Services.AddScoped<INoteRepository, NoteRepository>();
 builder.Services.AddScoped<IExerciseRepository, ExerciseRepository>();
 builder.Services.AddScoped<IRoutineRepository, RoutineRepository>();
 builder.Services.AddScoped<IWorkoutLogRepository, WorkoutLogRepository>();
+builder.Services.AddScoped<IDietTargetRepository, DietTargetRepository>();
+builder.Services.AddScoped<IMealRepository, MealRepository>();
+builder.Services.AddScoped<IFoodRepository, FoodRepository>();
+builder.Services.AddScoped<IWaterLogRepository, WaterLogRepository>();
+builder.Services.AddScoped<IFastingRepository, FastingRepository>();
 builder.Services.AddScoped<IStorageService, S3StorageService>();
 
 // Application Services
@@ -109,6 +114,19 @@ builder.Services.AddScoped<INoteService, NoteService>();
 builder.Services.AddScoped<IExerciseService, ExerciseService>();
 builder.Services.AddScoped<IRoutineService, RoutineService>();
 builder.Services.AddScoped<IWorkoutLogService, WorkoutLogService>();
+builder.Services.AddScoped<IDietService, DietService>();
+
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 // OpenAPI
 builder.Services.AddOpenApi();
@@ -129,6 +147,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 
+app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -142,12 +162,14 @@ app.MapNoteEndpoints();
 app.MapExerciseEndpoints();
 app.MapRoutineEndpoints();
 app.MapWorkoutLogEndpoints();
+app.MapDietEndpoints();
 
 // Seed initial data
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<NexodusDbContext>();
     await DataSeeder.SeedExercisesAsync(context, app.Environment.ContentRootPath, app.Logger);
+    await DataSeeder.SeedFoodsAsync(context, app.Logger);
 }
 
 app.MapGet("/health", () => TypedResults.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }))
