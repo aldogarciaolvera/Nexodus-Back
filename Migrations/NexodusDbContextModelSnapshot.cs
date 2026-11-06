@@ -110,6 +110,56 @@ namespace Nexodus_Back.Migrations
                     b.ToTable("Diet");
                 });
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.DietTarget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("CarbsGrams")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EatingWindowEnd")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("EatingWindowStart")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("FastingProtocol")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("FatGrams")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("ProteinGrams")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("TargetCalories")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("WaterTargetMl")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("DietTargets");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Exercise", b =>
                 {
                     b.Property<Guid>("Id")
@@ -151,6 +201,41 @@ namespace Nexodus_Back.Migrations
                         .IsUnique();
 
                     b.ToTable("Exercises");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.FastingLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FastingProtocol")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("TargetHours")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("FastingLogs");
                 });
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Finance", b =>
@@ -195,6 +280,167 @@ namespace Nexodus_Back.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Finances");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.Food", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Barcode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Brand")
+                        .HasColumnType("text");
+
+                    b.Property<double>("Calories")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Carbs")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("Fat")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Fiber")
+                        .HasColumnType("double precision");
+
+                    b.Property<bool>("IsCustom")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double?>("PotassiumMg")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Protein")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("ServingSize")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("ServingUnit")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double?>("SodiumMg")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Barcode");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Foods");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.Meal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Calories")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Carbs")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Date")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("Fat")
+                        .HasColumnType("double precision");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MealType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("Protein")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Time")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Date");
+
+                    b.ToTable("Meals");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.MealItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Calories")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Carbs")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Fat")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("FoodId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FoodName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("MealId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Protein")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Quantity")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FoodId");
+
+                    b.HasIndex("MealId");
+
+                    b.ToTable("MealItems");
                 });
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Note", b =>
@@ -400,6 +646,9 @@ namespace Nexodus_Back.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("Dieta")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
@@ -437,6 +686,33 @@ namespace Nexodus_Back.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WaterLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("ConsumedMl")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Date")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("WaterLogs");
                 });
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Workout", b =>
@@ -507,6 +783,110 @@ namespace Nexodus_Back.Migrations
                     b.ToTable("WorkoutLogs");
                 });
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CompletedSetsCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("RoutineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TotalReps")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("TotalVolumeKg")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("XpEarned")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoutineId");
+
+                    b.HasIndex("StartTime");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("WorkoutSessions");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("CalculatedOneRepMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ExerciseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Reps")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("Rpe")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("SetOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("WeightKg")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("WorkoutSessionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExerciseId");
+
+                    b.HasIndex("WorkoutSessionId");
+
+                    b.HasIndex("ExerciseId", "IsCompleted");
+
+                    b.ToTable("WorkoutSets");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Category", b =>
                 {
                     b.HasOne("Nexodus_Back.Core.Entities.User", "User")
@@ -540,6 +920,28 @@ namespace Nexodus_Back.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.DietTarget", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.FastingLog", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Finance", b =>
                 {
                     b.HasOne("Nexodus_Back.Core.Entities.Category", "Category")
@@ -556,6 +958,43 @@ namespace Nexodus_Back.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.Food", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.Meal", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.MealItem", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.Food", "Food")
+                        .WithMany()
+                        .HasForeignKey("FoodId");
+
+                    b.HasOne("Nexodus_Back.Core.Entities.Meal", "Meal")
+                        .WithMany("Items")
+                        .HasForeignKey("MealId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Food");
+
+                    b.Navigation("Meal");
                 });
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.RefreshToken", b =>
@@ -599,6 +1038,17 @@ namespace Nexodus_Back.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WaterLog", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Workout", b =>
                 {
                     b.HasOne("Nexodus_Back.Core.Entities.User", "User")
@@ -629,9 +1079,51 @@ namespace Nexodus_Back.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSession", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.Routine", "Routine")
+                        .WithMany()
+                        .HasForeignKey("RoutineId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Nexodus_Back.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Routine");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSet", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.Exercise", "Exercise")
+                        .WithMany()
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexodus_Back.Core.Entities.WorkoutSession", "WorkoutSession")
+                        .WithMany("Sets")
+                        .HasForeignKey("WorkoutSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exercise");
+
+                    b.Navigation("WorkoutSession");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Category", b =>
                 {
                     b.Navigation("Finances");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.Meal", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Note", b =>
@@ -642,6 +1134,11 @@ namespace Nexodus_Back.Migrations
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Routine", b =>
                 {
                     b.Navigation("RoutineExercises");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSession", b =>
+                {
+                    b.Navigation("Sets");
                 });
 #pragma warning restore 612, 618
         }

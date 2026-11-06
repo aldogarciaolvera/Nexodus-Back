@@ -17,7 +17,7 @@ Este proyecto promueve una Clean Architecture.
 4. **TodoList & Habits**: Tareas puntuales y hábitos recurrentes con rachas.
 5. **Notes**: Diario personal e ideas (con checklist).
 6. **Workouts**: Registro de entrenamientos (duración y calorías).
-7. **Diet**: Registro de comidas y calorías.
+7. **Diet**: Nutrición integral que incluye metas de macronutrientes (`DietTarget`), registro diario de comidas (`Meal`, `MealItem`), catálogo y escaneo de alimentos (`Food`), control de hidratación (`WaterLog`) y seguimiento de ayuno intermitente (`FastingLog`).
 
 ## Reglas y Convenciones
 

@@ -35,6 +35,14 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   **Módulo de Tareas y Hábitos:** Gestión de tareas puntuales y hábitos recurrentes con seguimiento de rachas (`CurrentStreak`, `HighestStreak`).
 *   **Módulo de Notas y Checklist:** Diario personal y notas con soporte para listas de verificación dinámicas.
 *   **Módulo de Ejercicios y Rutinas:** Catálogo paginado de más de 1,300 ejercicios con generación concurrente y optimizada de URLs pre-firmadas en S3, diseño de rutinas personalizadas y bitácora de entrenamientos.
+*   **Módulo Avanzado de Sesiones de Entrenamiento (Gym / Workout Sessions):** 
+    *   Sesiones en vivo en tiempo real con persistencia y reconexión transparente.
+    *   Registro granular serie por serie (`Normal`, `Warmup`, `DropSet`, `Failure`, `Timed`).
+    *   Cálculo automático de 1RM estimado (fórmula Brzycki).
+    *   Soporte para métricas RPE (Rating of Perceived Exertion) y duración en segundos.
+    *   Motor de fatiga y recuperación muscular acumulativa por grupo muscular (pecho, espalda, hombros, piernas, brazos, core) basado en decaimiento exponencial en 48-72h.
+    *   Cálculo automático de récords personales por ejercicio (Max Weight, Max Reps, Max 1RM, Max Volume).
+    *   Consolidación de sesión con volumen neto (excluyendo calentamiento) y otorgamiento de Nexodus XP (NXP).
 
 ---
 
@@ -66,7 +74,7 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```
 
 **Usuario (`/api/user`)** *(Requiere Autenticación JWT)*
-*   `GET /api/user/me` - Obtiene los datos del usuario autenticado (nombre, email, teléfono, peso, altura).
+*   `GET /api/user/me` - Obtiene los datos del usuario autenticado (nombre, email, teléfono, peso, altura, dieta).
 *   `PUT /api/user/me` - Actualiza los datos del usuario autenticado.
     ```json
     {
@@ -74,7 +82,8 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
       "email": "new@example.com",
       "phoneNumber": "0987654321", // (Opcional)
       "weight": 70.5, // (Opcional, en kg)
-      "height": 1.75 // (Opcional, en metros)
+      "height": 1.75, // (Opcional, en metros)
+      "dieta": true // (Opcional, booleano para indicar si cuenta con dieta configurada)
     }
     ```
 
@@ -194,6 +203,65 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     }
     ```
 *   `DELETE /api/workouts/{id}` - Elimina un registro de entrenamiento.
+
+**Sesiones de Entrenamiento en Vivo (`/api/gym/sessions`)** *(Requieren Autenticación JWT)*
+*   `POST /api/gym/sessions/start` - Inicia una nueva sesión activa de entrenamiento o reanuda una existente.
+    ```json
+    {
+      "routineId": "string (UUID, opcional)",
+      "name": "Pecho y Tríceps (opcional)"
+    }
+    ```
+*   `GET /api/gym/sessions/active` - Recupera la sesión activa actual del usuario con todas sus series y ejercicios.
+*   `GET /api/gym/sessions/{id}` - Obtiene el detalle de una sesión por su ID.
+*   `GET /api/gym/sessions?limit=20` - Historial paginado de sesiones de entrenamiento.
+*   `POST /api/gym/sessions/{id}/sets` - Registra o actualiza una serie realizada con cálculo de 1RM.
+    ```json
+    {
+      "setId": "string (UUID, opcional para actualizar)",
+      "exerciseId": "string (UUID)",
+      "setOrder": 1,
+      "type": "Normal", // "Normal", "Warmup", "DropSet", "Failure", "Timed"
+      "weightKg": 80.0,
+      "reps": 8,
+      "rpe": 8.5, // (Opcional, 1.0 - 10.0)
+      "durationSeconds": 0, // (Opcional)
+      "isCompleted": true
+    }
+    ```
+*   `DELETE /api/gym/sessions/{id}/sets/{setId}` - Elimina una serie específica de la sesión.
+*   `POST /api/gym/sessions/{id}/finish` - Finaliza la sesión, calcula volumen neto, repeticiones totales y XP ganado.
+    ```json
+    {
+      "notes": "Gran congestión en press de banca plano."
+    }
+    ```
+*   `DELETE /api/gym/sessions/{id}` - Cancela o descarta una sesión activa.
+*   `GET /api/gym/sessions/recovery/muscle-status` - Calcula el estado de fatiga y porcentaje de recuperación muscular por grupo.
+*   `GET /api/gym/sessions/exercises/{exerciseId}/records` - Obtiene los récords personales históricos en un ejercicio.
+
+**Nutrición y Dieta (`/api/diet`)** *(Requieren Autenticación JWT)*
+*   **Metas y Biometría:**
+    *   `GET /api/diet/target` - Obtiene las metas nutricionales y ventana de ingesta del usuario.
+    *   `PUT /api/diet/target` - Actualiza manualmente calorías, macros (proteína, carbs, grasas), agua y protocolo de ayuno.
+    *   `POST /api/diet/calculate-target` - Calcula TDEE y recomendación de macros según peso, altura, edad, sexo biológico, nivel de actividad y objetivo (`Cut`, `Maintenance`, `Bulk`).
+*   **Comidas y Resumen Diario:**
+    *   `GET /api/diet/daily?date=yyyy-MM-dd` - Obtiene resumen diario consolidado (totales de calorías, macros, agua, comidas agrupadas por tipo y metas activas).
+    *   `POST /api/diet/meals` - Registra una comida con sus ingredientes (`Items`).
+    *   `PUT /api/diet/meals/{id}` - Modifica alimentos, cantidades o marca la comida como completada.
+    *   `DELETE /api/diet/meals/{id}` - Elimina una comida del registro diario.
+*   **Catálogo de Alimentos:**
+    *   `GET /api/diet/foods/search?query=pechuga&page=1&pageSize=20` - Búsqueda paginada de alimentos por nombre o marca.
+    *   `GET /api/diet/foods/barcode/{barcode}` - Búsqueda instantánea por código de barras (EAN/UPC).
+    *   `POST /api/diet/foods` - Crea un alimento personalizado con sus valores nutricionales por porción.
+*   **Hidratación:**
+    *   `GET /api/diet/water?date=yyyy-MM-dd` - Retorna los mililitros consumidos en la fecha y el porcentaje alcanzado.
+    *   `POST /api/diet/water` - Suma una ingesta rápida de agua (ej. +250 ml o +500 ml).
+    *   `PUT /api/diet/water/set` - Ajusta el total exacto consumido para la fecha.
+*   **Ayuno Intermitente:**
+    *   `GET /api/diet/fasting/status` - Estado en vivo del ayuno (horas transcurridas, restantes, % de progreso y hora estimada de finalización).
+    *   `POST /api/diet/fasting/start` - Inicia una sesión de ayuno con protocolo (ej. `16:8`) y horas objetivo.
+    *   `POST /api/diet/fasting/stop` - Concluye la sesión de ayuno activa y abre la ventana de ingesta.
 
 ---
 
