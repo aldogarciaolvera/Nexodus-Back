@@ -1,3 +1,11 @@
+## [0.1.0] - 2026-11-06
+
+### Features
+
+- feat: Fase 1 del plan radical de evolucion
+- feat: Implementacion de Dieta
+- feat: Auditoria de lo echo
+
 ## [0.0.11] - 2026-10-07
 
 ### Features
