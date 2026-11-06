@@ -458,3 +458,66 @@ curl -X POST http://localhost:5079/api/diet/fasting/start \
 curl -X POST http://localhost:5079/api/diet/fasting/stop \
 -H "Authorization: Bearer <TOKEN>"
 
+### Gym Live Sessions & Muscle Recovery Endpoints ###
+
+# 1. Iniciar Sesión de Entrenamiento en Vivo
+curl -X POST http://localhost:5079/api/gym/sessions/start \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "routineId": null,
+  "name": "Pecho y Tríceps Obsidian"
+}'
+
+# 2. Obtener Sesión Activa Actual
+curl -X GET http://localhost:5079/api/gym/sessions/active \
+-H "Authorization: Bearer <TOKEN>"
+
+# 3. Obtener Sesión por ID
+curl -X GET http://localhost:5079/api/gym/sessions/<SESSION_ID> \
+-H "Authorization: Bearer <TOKEN>"
+
+# 4. Obtener Historial de Sesiones
+curl -X GET "http://localhost:5079/api/gym/sessions?limit=20" \
+-H "Authorization: Bearer <TOKEN>"
+
+# 5. Registrar o Actualizar Serie
+curl -X POST http://localhost:5079/api/gym/sessions/<SESSION_ID>/sets \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "exerciseId": "<EXERCISE_ID>",
+  "setOrder": 1,
+  "type": "Normal",
+  "weightKg": 80.0,
+  "reps": 8,
+  "rpe": 8.5,
+  "durationSeconds": 0,
+  "isCompleted": true
+}'
+
+# 6. Eliminar Serie
+curl -X DELETE http://localhost:5079/api/gym/sessions/<SESSION_ID>/sets/<SET_ID> \
+-H "Authorization: Bearer <TOKEN>"
+
+# 7. Finalizar Sesión Activa
+curl -X POST http://localhost:5079/api/gym/sessions/<SESSION_ID>/finish \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "notes": "Excelente sesión, nuevo récord en press de banca."
+}'
+
+# 8. Cancelar Sesión
+curl -X DELETE http://localhost:5079/api/gym/sessions/<SESSION_ID> \
+-H "Authorization: Bearer <TOKEN>"
+
+# 9. Obtener Estado de Recuperación Muscular
+curl -X GET http://localhost:5079/api/gym/sessions/recovery/muscle-status \
+-H "Authorization: Bearer <TOKEN>"
+
+# 10. Obtener Récords Personales de Ejercicio
+curl -X GET http://localhost:5079/api/gym/sessions/exercises/<EXERCISE_ID>/records \
+-H "Authorization: Bearer <TOKEN>"
+
+

@@ -97,6 +97,7 @@ builder.Services.AddScoped<INoteRepository, NoteRepository>();
 builder.Services.AddScoped<IExerciseRepository, ExerciseRepository>();
 builder.Services.AddScoped<IRoutineRepository, RoutineRepository>();
 builder.Services.AddScoped<IWorkoutLogRepository, WorkoutLogRepository>();
+builder.Services.AddScoped<IWorkoutSessionRepository, WorkoutSessionRepository>();
 builder.Services.AddScoped<IDietTargetRepository, DietTargetRepository>();
 builder.Services.AddScoped<IMealRepository, MealRepository>();
 builder.Services.AddScoped<IFoodRepository, FoodRepository>();
@@ -114,6 +115,7 @@ builder.Services.AddScoped<INoteService, NoteService>();
 builder.Services.AddScoped<IExerciseService, ExerciseService>();
 builder.Services.AddScoped<IRoutineService, RoutineService>();
 builder.Services.AddScoped<IWorkoutLogService, WorkoutLogService>();
+builder.Services.AddScoped<IWorkoutSessionService, WorkoutSessionService>();
 builder.Services.AddScoped<IDietService, DietService>();
 
 // Configure CORS
@@ -162,6 +164,7 @@ app.MapNoteEndpoints();
 app.MapExerciseEndpoints();
 app.MapRoutineEndpoints();
 app.MapWorkoutLogEndpoints();
+app.MapWorkoutSessionEndpoints();
 app.MapDietEndpoints();
 
 // Seed initial data

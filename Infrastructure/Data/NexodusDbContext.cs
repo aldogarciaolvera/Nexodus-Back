@@ -28,6 +28,8 @@ public class NexodusDbContext : DbContext
     public DbSet<Routine> Routines { get; set; } = null!;
     public DbSet<RoutineExercise> RoutineExercises { get; set; } = null!;
     public DbSet<WorkoutLog> WorkoutLogs { get; set; } = null!;
+    public DbSet<WorkoutSession> WorkoutSessions { get; set; } = null!;
+    public DbSet<WorkoutSet> WorkoutSets { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -114,6 +116,39 @@ public class NexodusDbContext : DbContext
         modelBuilder.Entity<FastingLog>(entity =>
         {
             entity.HasIndex(fl => new { fl.UserId, fl.IsActive });
+        });
+
+        modelBuilder.Entity<WorkoutSession>(entity =>
+        {
+            entity.HasIndex(ws => new { ws.UserId, ws.IsActive });
+            entity.HasIndex(ws => ws.StartTime);
+
+            entity.HasOne(ws => ws.User)
+                .WithMany()
+                .HasForeignKey(ws => ws.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ws => ws.Routine)
+                .WithMany()
+                .HasForeignKey(ws => ws.RoutineId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(ws => ws.Sets)
+                .WithOne(s => s.WorkoutSession)
+                .HasForeignKey(s => s.WorkoutSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<WorkoutSet>(entity =>
+        {
+            entity.HasIndex(s => s.WorkoutSessionId);
+            entity.HasIndex(s => s.ExerciseId);
+            entity.HasIndex(s => new { s.ExerciseId, s.IsCompleted });
+
+            entity.HasOne(s => s.Exercise)
+                .WithMany()
+                .HasForeignKey(s => s.ExerciseId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

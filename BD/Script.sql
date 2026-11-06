@@ -239,3 +239,41 @@ CREATE TABLE "FastingLogs" (
     "CreatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX "IX_FastingLogs_UserId_IsActive" ON "FastingLogs"("UserId", "IsActive");
+
+CREATE TABLE "WorkoutSessions" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "UserId" UUID NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+    "RoutineId" UUID REFERENCES "Routines"("Id") ON DELETE SET NULL,
+    "Name" TEXT NOT NULL DEFAULT 'Entrenamiento',
+    "StartTime" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    "EndTime" TIMESTAMPTZ,
+    "DurationSeconds" INT NOT NULL DEFAULT 0,
+    "TotalVolumeKg" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "TotalReps" INT NOT NULL DEFAULT 0,
+    "CompletedSetsCount" INT NOT NULL DEFAULT 0,
+    "XpEarned" INT NOT NULL DEFAULT 0,
+    "IsActive" BOOLEAN NOT NULL DEFAULT TRUE,
+    "Notes" TEXT
+);
+CREATE INDEX "IX_WorkoutSessions_RoutineId" ON "WorkoutSessions"("RoutineId");
+CREATE INDEX "IX_WorkoutSessions_StartTime" ON "WorkoutSessions"("StartTime");
+CREATE INDEX "IX_WorkoutSessions_UserId_IsActive" ON "WorkoutSessions"("UserId", "IsActive");
+
+CREATE TABLE "WorkoutSets" (
+    "Id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "WorkoutSessionId" UUID NOT NULL REFERENCES "WorkoutSessions"("Id") ON DELETE CASCADE,
+    "ExerciseId" UUID NOT NULL REFERENCES "Exercises"("Id") ON DELETE RESTRICT,
+    "SetOrder" INT NOT NULL DEFAULT 1,
+    "Type" INT NOT NULL DEFAULT 0, -- 0: Normal, 1: Warmup, 2: DropSet, 3: Failure, 4: Timed
+    "WeightKg" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "Reps" INT NOT NULL DEFAULT 0,
+    "Rpe" DOUBLE PRECISION,
+    "DurationSeconds" INT,
+    "CalculatedOneRepMax" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "IsCompleted" BOOLEAN NOT NULL DEFAULT FALSE,
+    "CompletedAt" TIMESTAMPTZ
+);
+CREATE INDEX "IX_WorkoutSets_ExerciseId" ON "WorkoutSets"("ExerciseId");
+CREATE INDEX "IX_WorkoutSets_ExerciseId_IsCompleted" ON "WorkoutSets"("ExerciseId", "IsCompleted");
+CREATE INDEX "IX_WorkoutSets_WorkoutSessionId" ON "WorkoutSets"("WorkoutSessionId");
+

@@ -783,6 +783,110 @@ namespace Nexodus_Back.Migrations
                     b.ToTable("WorkoutLogs");
                 });
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CompletedSetsCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("RoutineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TotalReps")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("TotalVolumeKg")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("XpEarned")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoutineId");
+
+                    b.HasIndex("StartTime");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("WorkoutSessions");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("CalculatedOneRepMax")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ExerciseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Reps")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("Rpe")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("SetOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("WeightKg")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("WorkoutSessionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExerciseId");
+
+                    b.HasIndex("WorkoutSessionId");
+
+                    b.HasIndex("ExerciseId", "IsCompleted");
+
+                    b.ToTable("WorkoutSets");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Category", b =>
                 {
                     b.HasOne("Nexodus_Back.Core.Entities.User", "User")
@@ -975,6 +1079,43 @@ namespace Nexodus_Back.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSession", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.Routine", "Routine")
+                        .WithMany()
+                        .HasForeignKey("RoutineId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Nexodus_Back.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Routine");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSet", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.Exercise", "Exercise")
+                        .WithMany()
+                        .HasForeignKey("ExerciseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexodus_Back.Core.Entities.WorkoutSession", "WorkoutSession")
+                        .WithMany("Sets")
+                        .HasForeignKey("WorkoutSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exercise");
+
+                    b.Navigation("WorkoutSession");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Category", b =>
                 {
                     b.Navigation("Finances");
@@ -993,6 +1134,11 @@ namespace Nexodus_Back.Migrations
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Routine", b =>
                 {
                     b.Navigation("RoutineExercises");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.WorkoutSession", b =>
+                {
+                    b.Navigation("Sets");
                 });
 #pragma warning restore 612, 618
         }
