@@ -542,3 +542,26 @@ curl -X GET "http://localhost:5079/api/diet/daily?date=2026-11-06" \
 
 
 
+
+
+### Gamification & Rachas Endpoints ###
+
+# Get Gamification & Streak Status
+curl -X GET http://localhost:5079/api/gamification/status \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Update Scheduled Rest Days
+curl -X PUT http://localhost:5079/api/gamification/rest-days \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer YOUR_JWT_TOKEN" \
+-d '{
+  "restDays": ["Saturday", "Sunday"]
+}'
+
+# Restore Broken Streak with Cyphers or Freezes
+curl -X POST http://localhost:5079/api/gamification/streak/restore \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Buy Streak Freeze in Cyber Vault
+curl -X POST http://localhost:5079/api/gamification/vault/buy-freeze \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"

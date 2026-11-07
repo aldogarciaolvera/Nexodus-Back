@@ -19,12 +19,14 @@ public class WorkoutSessionService(
     IWorkoutSessionRepository sessionRepository,
     IRoutineRepository routineRepository,
     IExerciseRepository exerciseRepository,
-    IUserRepository userRepository) : IWorkoutSessionService
+    IUserRepository userRepository,
+    IGamificationService gamificationService) : IWorkoutSessionService
 {
     private readonly IWorkoutSessionRepository _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
     private readonly IRoutineRepository _routineRepository = routineRepository ?? throw new ArgumentNullException(nameof(routineRepository));
     private readonly IExerciseRepository _exerciseRepository = exerciseRepository ?? throw new ArgumentNullException(nameof(exerciseRepository));
     private readonly IUserRepository _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+    private readonly IGamificationService _gamificationService = gamificationService ?? throw new ArgumentNullException(nameof(gamificationService));
 
     public async Task<WorkoutSessionDto> StartSessionAsync(StartWorkoutSessionDto dto, Guid userId, CancellationToken cancellationToken = default)
     {
@@ -254,6 +256,16 @@ public class WorkoutSessionService(
         session.XpEarned = 50 + (int)(session.TotalVolumeKg / 100.0);
 
         await _sessionRepository.UpdateAsync(session, cancellationToken);
+
+        // Registro de actividad y progreso de racha en The Nexodus Protocol
+        await _gamificationService.RecordActivityAsync(
+            userId,
+            "Workout",
+            baseNxp: 50,
+            bonusNxp: (int)(session.TotalVolumeKg / 100.0),
+            cancellationToken: cancellationToken
+        );
+
         return MapToDto(session);
     }
 

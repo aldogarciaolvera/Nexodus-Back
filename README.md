@@ -327,3 +327,31 @@ La integración con **Open Food Facts** no requiere ninguna API key ni registro 
 ## Docker
 
 El proyecto incluye un `Dockerfile` optimizado y un `.dockerignore` para construir la imagen eficientemente utilizando un build multietapa (SDK 10.0 y ASP.NET 10.0 runtime).
+
+
+---
+
+## The Nexodus Protocol: Motor de Gamificación y Rachas Inteligentes (Fase 5)
+
+El backend incorpora el motor central de retención y consistencia bajo la arquitectura Obsidian Cyan:
+
+### 1. Modelo de Rachas Inteligentes (`UserGamification`)
+- **Protección de Días de Descanso (`ScheduledRestDays`):** Configuración de días de descanso activo (ej. `Saturday,Sunday`). Si no hay actividad en estos días, la racha permanece protegida y no se rompe.
+- **Ventana de Gracia de 24 horas (`StreakGracePeriodExpiresAt`):** Tras un día perdido, se otorga una ventana de gracia para entrenar o registrar nutrición y recuperar la racha sin penalización.
+- **Escudos de Racha (`StreakFreezesAvailable`):** Consumibles automáticos que absorben un olvido si la ventana de gracia expira.
+
+### 2. Rangos Obsidian y Economía de Cyphers
+- **Jerarquía de Rangos (Obsidian Tiers):**
+  1. `Initiate` (0 - 499 NXP)
+  2. `Vanguard` (500 - 1,499 NXP)
+  3. `Cyber` (1,500 - 2,999 NXP)
+  4. `Titan` (3,000 - 4,999 NXP)
+  5. `Apex` (5,000 - 7,499 NXP)
+  6. `Sovereign` (7,500 - 9,999 NXP)
+  7. `Obsidian` (10,000+ NXP - Rango Supremo)
+- **Reglas de Obtención de NXP:**
+  - `+50 NXP` base por entrenamiento completado `+ 1 NXP` por cada 100 kg de volumen total levantado.
+  - Multiplicador de racha dinámico: hasta `5x` en racha sostenida.
+- **Divisa Cyphers y Cyber Vault:**
+  - Recompensas por ascenso de rango (+50 Cyphers) e hitos semanales (+20 Cyphers).
+  - Canje de Escudos de Racha (`POST /api/gamification/vault/buy-freeze`) y restauración de disciplina (`POST /api/gamification/streak/restore`).

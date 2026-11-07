@@ -688,6 +688,58 @@ namespace Nexodus_Back.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.UserGamification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CurrentStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Cyphers")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HighestStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LastActiveDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("NxpTotal")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ScheduledRestDays")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("StreakFreezesAvailable")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("StreakGracePeriodExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Tier")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserGamifications");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.WaterLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1032,6 +1084,17 @@ namespace Nexodus_Back.Migrations
                     b.HasOne("Nexodus_Back.Core.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.UserGamification", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.User", "User")
+                        .WithOne()
+                        .HasForeignKey("Nexodus_Back.Core.Entities.UserGamification", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

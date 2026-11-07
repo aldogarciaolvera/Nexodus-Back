@@ -117,6 +117,7 @@ builder.Services.AddScoped<IMealRepository, MealRepository>();
 builder.Services.AddScoped<IFoodRepository, FoodRepository>();
 builder.Services.AddScoped<IWaterLogRepository, WaterLogRepository>();
 builder.Services.AddScoped<IFastingRepository, FastingRepository>();
+builder.Services.AddScoped<IUserGamificationRepository, UserGamificationRepository>();
 builder.Services.AddScoped<IStorageService, S3StorageService>();
 
 // Application Services
@@ -129,6 +130,7 @@ builder.Services.AddScoped<INoteService, NoteService>();
 builder.Services.AddScoped<IExerciseService, ExerciseService>();
 builder.Services.AddScoped<IRoutineService, RoutineService>();
 builder.Services.AddScoped<IWorkoutLogService, WorkoutLogService>();
+builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IWorkoutSessionService, WorkoutSessionService>();
 builder.Services.AddScoped<IDietService, DietService>();
 builder.Services.AddScoped<IOpenFoodFactsService, OpenFoodFactsService>();
@@ -182,6 +184,7 @@ app.MapRoutineEndpoints();
 app.MapWorkoutLogEndpoints();
 app.MapWorkoutSessionEndpoints();
 app.MapDietEndpoints();
+app.MapGamificationEndpoints();
 
 // Seed initial data
 using (var scope = app.Services.CreateScope())

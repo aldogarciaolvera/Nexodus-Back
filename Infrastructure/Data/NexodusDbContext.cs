@@ -30,6 +30,7 @@ public class NexodusDbContext : DbContext
     public DbSet<WorkoutLog> WorkoutLogs { get; set; } = null!;
     public DbSet<WorkoutSession> WorkoutSessions { get; set; } = null!;
     public DbSet<WorkoutSet> WorkoutSets { get; set; } = null!;
+    public DbSet<UserGamification> UserGamifications { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -149,6 +150,16 @@ public class NexodusDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(s => s.ExerciseId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserGamification>(entity =>
+        {
+            entity.HasIndex(g => g.UserId).IsUnique();
+
+            entity.HasOne(g => g.User)
+                .WithOne()
+                .HasForeignKey<UserGamification>(g => g.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
