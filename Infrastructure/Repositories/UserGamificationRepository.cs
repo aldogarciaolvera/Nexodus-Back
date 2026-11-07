@@ -36,3 +36,4 @@ public class UserGamificationRepository : IUserGamificationRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 }
+

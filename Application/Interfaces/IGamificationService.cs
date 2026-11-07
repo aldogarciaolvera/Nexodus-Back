@@ -14,3 +14,4 @@ public interface IGamificationService
     Task<StreakRestoreResultDto> RestoreStreakAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<VaultPurchaseResultDto> PurchaseVaultItemAsync(Guid userId, string itemType, CancellationToken cancellationToken = default);
 }
+

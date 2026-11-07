@@ -61,3 +61,4 @@ public static class GamificationEndpoints
         .ProducesValidationProblem(StatusCodes.Status400BadRequest);
     }
 }
+

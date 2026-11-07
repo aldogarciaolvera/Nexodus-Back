@@ -11,3 +11,4 @@ public interface IUserGamificationRepository
     Task<UserGamification> AddAsync(UserGamification gamification, CancellationToken cancellationToken = default);
     Task UpdateAsync(UserGamification gamification, CancellationToken cancellationToken = default);
 }
+
