@@ -48,7 +48,7 @@ builder.Services.Configure<S3Options>(options =>
 builder.Services.Configure<GeminiOptions>(options =>
 {
     options.ApiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? "";
-    options.Model = Environment.GetEnvironmentVariable("GEMINI_MODEL") ?? "gemini-3.5-flash";
+    options.Model = Environment.GetEnvironmentVariable("GEMINI_MODEL") ?? "gemini-3.5-flash-lite";
 });
 
 builder.Services.Configure<OpenFoodFactsOptions>(options =>

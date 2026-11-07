@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -50,8 +52,17 @@ public class GeminiVisionService(
         }
 
         var determinedMimeType = string.IsNullOrWhiteSpace(mimeType) ? "image/jpeg" : mimeType.Trim();
-        var model = string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.5-flash" : _options.Model.Trim();
-        var endpoint = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_options.ApiKey}";
+
+        var primaryModel = string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.5-flash-lite" : _options.Model.Trim();
+        var candidateModels = new List<string> { primaryModel };
+        if (!candidateModels.Contains("gemini-3.5-flash-lite"))
+        {
+            candidateModels.Add("gemini-3.5-flash-lite");
+        }
+        if (!candidateModels.Contains("gemini-3.5-flash"))
+        {
+            candidateModels.Add("gemini-3.5-flash");
+        }
 
         var promptBuilder = new StringBuilder();
         promptBuilder.AppendLine("Eres Nexodus Lens, el analizador de visión computacional y nutrición deportiva de precisión de la plataforma Nexodus.");
@@ -108,18 +119,75 @@ public class GeminiVisionService(
 
         try
         {
-            using var httpContent = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync(endpoint, httpContent, cancellationToken);
+            HttpResponseMessage? lastResponse = null;
+            string? lastResponseBody = null;
+            string? successfulResponseBody = null;
 
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
+            foreach (var candidateModel in candidateModels)
             {
-                _logger.LogError("Gemini API error (HTTP {Status}): {Body}", response.StatusCode, responseBody);
-                throw new ValidationException($"Error al comunicarse con Google Gemini API ({response.StatusCode}). Verifica tu clave API.");
+                var endpoint = $"https://generativelanguage.googleapis.com/v1beta/models/{candidateModel}:generateContent?key={_options.ApiKey}";
+                try
+                {
+                    using var httpContent = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync(endpoint, httpContent, cancellationToken);
+                    var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        successfulResponseBody = responseBody;
+                        _logger.LogInformation("Gemini Vision analizó exitosamente la imagen con el modelo '{Model}'.", candidateModel);
+                        break;
+                    }
+
+                    lastResponse = response;
+                    lastResponseBody = responseBody;
+
+                    _logger.LogWarning(
+                        "Gemini API devolvió HTTP {Status} con el modelo '{Model}'. Verificando siguiente modelo de respaldo...",
+                        response.StatusCode, candidateModel
+                    );
+
+                    // Si es sobrecarga temporal (503 Service Unavailable, 429 Too Many Requests, 5xx) o 404 de modelo retirado
+                    if (response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                        response.StatusCode == (HttpStatusCode)429 ||
+                        response.StatusCode == HttpStatusCode.NotFound ||
+                        (int)response.StatusCode >= 500)
+                    {
+                        await Task.Delay(350, cancellationToken);
+                        continue;
+                    }
+
+                    // En otros errores de petición como 400 o 401, no continuar
+                    break;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Excepción de red al consultar Gemini API con modelo '{Model}'. Probando modelo de respaldo...", candidateModel);
+                    await Task.Delay(350, cancellationToken);
+                }
             }
 
-            using var doc = JsonDocument.Parse(responseBody);
+            if (successfulResponseBody == null)
+            {
+                _logger.LogError("Todos los modelos candidatos de Gemini Vision fallaron. Última respuesta ({Status}): {Body}",
+                    lastResponse?.StatusCode, lastResponseBody);
+
+                if (lastResponse?.StatusCode == HttpStatusCode.ServiceUnavailable)
+                {
+                    throw new ValidationException(
+                        "Los servidores de Google Gemini están experimentando alta demanda momentáneamente. " +
+                        "Por favor vuelve a intentar en unos segundos."
+                    );
+                }
+
+                throw new ValidationException($"Error al comunicarse con Google Gemini API ({lastResponse?.StatusCode.ToString() ?? "Error"}). Verifica tu clave API o intenta más tarde.");
+            }
+
+            using var doc = JsonDocument.Parse(successfulResponseBody);
             var root = doc.RootElement;
 
             if (!root.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
