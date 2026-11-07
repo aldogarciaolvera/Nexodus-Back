@@ -43,6 +43,10 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     *   Motor de fatiga y recuperación muscular acumulativa por grupo muscular (pecho, espalda, hombros, piernas, brazos, core) basado en decaimiento exponencial en 48-72h.
     *   Cálculo automático de récords personales por ejercicio (Max Weight, Max Reps, Max 1RM, Max Volume).
     *   Consolidación de sesión con volumen neto (excluyendo calentamiento) y otorgamiento de Nexodus XP (NXP).
+*   **Módulo de Nutrición Inteligente & Nexodus Lens (Fase 3):**
+    *   **Nexodus Lens (Visión Multimodal con Google Gemini):** Reconocimiento inteligente de platos y alimentos a partir de una fotografía en base64, estimando platillo, ingredientes, gramajes aproximados, calorías y macronutrientes estructurados.
+    *   **Integración Global con Open Food Facts:** Búsqueda automática por código de barras comercial con fallback a la base de datos abierta global de Open Food Facts (sin costo ni API key, con caching automático en PostgreSQL).
+    *   **Balance Calórico Neto Dinámico:** Cálculo en tiempo real de calorías consumidas vs calorías quemadas en sesiones de entrenamiento (`NetCalories = ConsumedCalories - BurnedCalories`).
 
 ---
 
@@ -246,14 +250,23 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     *   `PUT /api/diet/target` - Actualiza manualmente calorías, macros (proteína, carbs, grasas), agua y protocolo de ayuno.
     *   `POST /api/diet/calculate-target` - Calcula TDEE y recomendación de macros según peso, altura, edad, sexo biológico, nivel de actividad y objetivo (`Cut`, `Maintenance`, `Bulk`).
 *   **Comidas y Resumen Diario:**
-    *   `GET /api/diet/daily?date=yyyy-MM-dd` - Obtiene resumen diario consolidado (totales de calorías, macros, agua, comidas agrupadas por tipo y metas activas).
+    *   `GET /api/diet/daily?date=yyyy-MM-dd` - Obtiene resumen diario consolidado: totales de calorías consumidas, calorías quemadas en entrenamientos, balance calórico neto (`NetCalories`), macros, agua, comidas agrupadas por tipo y metas activas.
     *   `POST /api/diet/meals` - Registra una comida con sus ingredientes (`Items`).
     *   `PUT /api/diet/meals/{id}` - Modifica alimentos, cantidades o marca la comida como completada.
     *   `DELETE /api/diet/meals/{id}` - Elimina una comida del registro diario.
-*   **Catálogo de Alimentos:**
+*   **Catálogo de Alimentos & Open Food Facts:**
     *   `GET /api/diet/foods/search?query=pechuga&page=1&pageSize=20` - Búsqueda paginada de alimentos por nombre o marca.
-    *   `GET /api/diet/foods/barcode/{barcode}` - Búsqueda instantánea por código de barras (EAN/UPC).
+    *   `GET /api/diet/foods/barcode/{barcode}` - Búsqueda instantánea por código de barras (EAN/UPC). Si el producto no existe localmente, consulta automáticamente la base de datos abierta global de **Open Food Facts** y lo guarda en caché local.
     *   `POST /api/diet/foods` - Crea un alimento personalizado con sus valores nutricionales por porción.
+*   **Nexodus Lens (Visión Artificial Multimodal con Google Gemini):**
+    *   `POST /api/diet/lens/analyze` - Analiza una fotografía de comida en base64 para detectar ingredientes, gramajes estimados, calorías y macronutrientes.
+        ```json
+        {
+          "base64Image": "<string_base64_sin_prefijo_o_con_data_uri>",
+          "mimeType": "image/jpeg",
+          "additionalContext": "Pechuga asada con arroz integral (opcional)"
+        }
+        ```
 *   **Hidratación:**
     *   `GET /api/diet/water?date=yyyy-MM-dd` - Retorna los mililitros consumidos en la fecha y el porcentaje alcanzado.
     *   `POST /api/diet/water` - Suma una ingesta rápida de agua (ej. +250 ml o +500 ml).
@@ -273,6 +286,29 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     cp .env.example .env
     ```
     Configura tus credenciales de base de datos PostgreSQL, configuración JWT y **credenciales S3 (AWS SDK / MinIO)** dentro del `.env`.
+
+### Cómo Obtener y Configurar tu Google Gemini API Key (Nexodus Lens)
+
+Nexodus Lens utiliza el modelo multimodal `gemini-2.5-flash` para el reconocimiento instantáneo de platos y macronutrientes. Para activarlo:
+
+1. **Entrar a Google AI Studio:**
+   - Dirígete a [Google AI Studio](https://aistudio.google.com/).
+   - Inicia sesión con tu cuenta de Google.
+2. **Generar la API Key:**
+   - En el menú lateral o superior, haz clic en **"Get API key"** (o "Crear clave de API").
+   - Selecciona **"Create API key in new project"** (o en un proyecto de Google Cloud existente).
+   - Copia la clave alfanumérica generada (ej. `AIzaSy...`).
+3. **Configurarla en tu archivo `.env`:**
+   - Abre tu archivo `.env` en la raíz de `Nexodus-Back` y añade:
+     ```env
+     GEMINI_API_KEY=AIzaSyTuClaveDeApiAqui
+     GEMINI_MODEL=gemini-2.5-flash
+     ```
+   *Nota: La capa gratuita de Google AI Studio ofrece miles de peticiones mensuales sin costo. Si la variable no está configurada, el endpoint retornará una respuesta ProblemDetails explicativa indicando cómo habilitarla.*
+
+### Open Food Facts (Códigos de Barras)
+
+La integración con **Open Food Facts** no requiere ninguna API key ni registro previo. Se comunica de forma nativa con la API global v2 identificándose con la cabecera `User-Agent: Nexodus-Nutrition/1.0 (contact@nexodus.app)`. Al escanear un código de barras nuevo, el backend lo descarga de Open Food Facts y lo persiste en la base de datos PostgreSQL local para acelerar todas las consultas futuras.
 
 2.  **Migraciones de Base de Datos y Seed:**
     Para aplicar las migraciones de Entity Framework Core:

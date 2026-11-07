@@ -78,6 +78,8 @@ public class DailyDietSummaryDto
     public double ConsumedCarbs { get; set; }
     public double ConsumedFat { get; set; }
     public double ConsumedWaterMl { get; set; }
+    public double BurnedCalories { get; set; }
+    public double NetCalories { get; set; }
     public DietTargetDto? Target { get; set; }
     public Dictionary<string, List<MealDto>> MealsByType { get; set; } = new();
     public List<MealDto> Meals { get; set; } = [];

@@ -20,7 +20,9 @@ public class DietService(
     IFoodRepository foodRepo,
     IWaterLogRepository waterRepo,
     IFastingRepository fastingRepo,
-    IUserRepository userRepo) : IDietService
+    IUserRepository userRepo,
+    IOpenFoodFactsService openFoodFactsService,
+    IWorkoutSessionRepository sessionRepo) : IDietService
 {
     private readonly IDietTargetRepository _dietTargetRepo = dietTargetRepo ?? throw new ArgumentNullException(nameof(dietTargetRepo));
     private readonly IMealRepository _mealRepo = mealRepo ?? throw new ArgumentNullException(nameof(mealRepo));
@@ -28,6 +30,8 @@ public class DietService(
     private readonly IWaterLogRepository _waterRepo = waterRepo ?? throw new ArgumentNullException(nameof(waterRepo));
     private readonly IFastingRepository _fastingRepo = fastingRepo ?? throw new ArgumentNullException(nameof(fastingRepo));
     private readonly IUserRepository _userRepo = userRepo ?? throw new ArgumentNullException(nameof(userRepo));
+    private readonly IOpenFoodFactsService _openFoodFactsService = openFoodFactsService ?? throw new ArgumentNullException(nameof(openFoodFactsService));
+    private readonly IWorkoutSessionRepository _sessionRepo = sessionRepo ?? throw new ArgumentNullException(nameof(sessionRepo));
 
     #region Targets & Calculations
 
@@ -174,6 +178,30 @@ public class DietService(
             ["Dinner"] = mealDtos.Where(m => m.MealType.Equals("Dinner", StringComparison.OrdinalIgnoreCase)).ToList()
         };
 
+        // Net Caloric Balance: Calculate calories burned in completed workout sessions on this date
+        double burnedCalories = 0;
+        try
+        {
+            var sessions = await _sessionRepo.GetAllByUserIdAsync(userId, 50, cancellationToken);
+            var completedToday = sessions
+                .Where(ws => !ws.IsActive && ws.StartTime.ToString("yyyy-MM-dd") == date)
+                .ToList();
+
+            foreach (var session in completedToday)
+            {
+                // Estimation: ~5 kcal per min + 0.02 kcal per kg of volume
+                var durationMins = session.DurationSeconds / 60.0;
+                var sessionBurned = (durationMins * 5.0) + (session.TotalVolumeKg * 0.02);
+                burnedCalories += Math.Max(50.0, sessionBurned);
+            }
+        }
+        catch
+        {
+            // Graceful fallback if session queries fail
+        }
+
+        var netCalories = totalCalories - burnedCalories;
+
         return new DailyDietSummaryDto
         {
             Date = date,
@@ -182,6 +210,8 @@ public class DietService(
             ConsumedCarbs = Math.Round(totalCarbs, 1),
             ConsumedFat = Math.Round(totalFat, 1),
             ConsumedWaterMl = waterLog?.ConsumedMl ?? 0,
+            BurnedCalories = Math.Round(burnedCalories, 1),
+            NetCalories = Math.Round(netCalories, 1),
             Target = targetDto,
             MealsByType = mealsByType,
             Meals = mealDtos
@@ -317,7 +347,18 @@ public class DietService(
     {
         var food = await _foodRepo.GetByBarcodeAsync(barcode, cancellationToken);
         if (food == null)
-            throw new NotFoundException($"Alimento con código de barras '{barcode}' no encontrado.");
+        {
+            // Fallback: Query global Open Food Facts API
+            var externalFood = await _openFoodFactsService.LookupBarcodeAsync(barcode, cancellationToken);
+            if (externalFood != null)
+            {
+                // Cache into local database for future instant lookups
+                food = await _foodRepo.CreateAsync(externalFood, cancellationToken);
+            }
+        }
+
+        if (food == null)
+            throw new NotFoundException($"Alimento con código de barras '{barcode}' no encontrado en el catálogo local ni en Open Food Facts.");
 
         return MapToFoodDto(food);
     }

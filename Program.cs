@@ -45,6 +45,20 @@ builder.Services.Configure<S3Options>(options =>
     options.BucketName = Environment.GetEnvironmentVariable("S3_BUCKET_NAME") ?? "nexodus";
 });
 
+builder.Services.Configure<GeminiOptions>(options =>
+{
+    options.ApiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? "";
+    options.Model = Environment.GetEnvironmentVariable("GEMINI_MODEL") ?? "gemini-2.5-flash";
+});
+
+builder.Services.Configure<OpenFoodFactsOptions>(options =>
+{
+    options.BaseUrl = Environment.GetEnvironmentVariable("OPEN_FOOD_FACTS_URL") ?? "https://world.openfoodfacts.org/api/v2/product";
+    options.UserAgent = Environment.GetEnvironmentVariable("OPEN_FOOD_FACTS_USER_AGENT") ?? "Nexodus-Nutrition/1.0 (contact@nexodus.app)";
+});
+
+builder.Services.AddHttpClient();
+
 // Configure Authentication & Authorization
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
 if (string.IsNullOrEmpty(jwtSecret)) throw new InvalidOperationException("JWT_SECRET is not set.");
@@ -117,6 +131,8 @@ builder.Services.AddScoped<IRoutineService, RoutineService>();
 builder.Services.AddScoped<IWorkoutLogService, WorkoutLogService>();
 builder.Services.AddScoped<IWorkoutSessionService, WorkoutSessionService>();
 builder.Services.AddScoped<IDietService, DietService>();
+builder.Services.AddScoped<IOpenFoodFactsService, OpenFoodFactsService>();
+builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
 
 // Configure CORS
 builder.Services.AddCors(options =>

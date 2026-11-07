@@ -217,5 +217,20 @@ public static class DietEndpoints
         .Produces<FastingStatusDto>(StatusCodes.Status200OK);
 
         #endregion
+
+        #region Nexodus Lens (AI Multimodal Vision)
+
+        group.MapPost("/lens/analyze", async (AnalyzeFoodImageRequestDto dto, IGeminiVisionService visionService, CancellationToken ct) =>
+        {
+            var result = await visionService.AnalyzeMealImageAsync(dto.Base64Image, dto.MimeType, dto.AdditionalContext, ct);
+            return Results.Ok(result);
+        })
+        .AddEndpointFilter<ValidationFilter<AnalyzeFoodImageRequestDto>>()
+        .WithName("AnalyzeMealLens")
+        .WithSummary("Analiza visualmente una fotografía de comida mediante Google Gemini Vision para estimar platillos, porciones, calorías y macros")
+        .Produces<FoodAnalysisResultDto>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+        #endregion
     }
 }
