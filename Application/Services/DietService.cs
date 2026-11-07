@@ -267,32 +267,30 @@ public class DietService(
         if (!string.IsNullOrWhiteSpace(dto.Time)) meal.Time = dto.Time;
         if (dto.IsCompleted.HasValue) meal.IsCompleted = dto.IsCompleted.Value;
 
+        List<MealItem>? newItems = null;
+
         if (dto.Items != null)
         {
-            meal.Items.Clear();
-            foreach (var item in dto.Items)
+            newItems = dto.Items.Select(item => new MealItem
             {
-                meal.Items.Add(new MealItem
-                {
-                    Id = Guid.NewGuid(),
-                    MealId = meal.Id,
-                    FoodId = item.FoodId,
-                    FoodName = item.FoodName,
-                    Quantity = item.Quantity,
-                    Unit = item.Unit,
-                    Calories = item.Calories,
-                    Protein = item.Protein,
-                    Carbs = item.Carbs,
-                    Fat = item.Fat
-                });
-            }
+                Id = Guid.NewGuid(),
+                MealId = meal.Id,
+                FoodId = item.FoodId,
+                FoodName = item.FoodName,
+                Quantity = item.Quantity,
+                Unit = item.Unit,
+                Calories = item.Calories,
+                Protein = item.Protein,
+                Carbs = item.Carbs,
+                Fat = item.Fat
+            }).ToList();
 
-            if (meal.Items.Count > 0)
+            if (newItems.Count > 0)
             {
-                meal.Calories = meal.Items.Sum(i => i.Calories);
-                meal.Protein = meal.Items.Sum(i => i.Protein);
-                meal.Carbs = meal.Items.Sum(i => i.Carbs);
-                meal.Fat = meal.Items.Sum(i => i.Fat);
+                meal.Calories = newItems.Sum(i => i.Calories);
+                meal.Protein = newItems.Sum(i => i.Protein);
+                meal.Carbs = newItems.Sum(i => i.Carbs);
+                meal.Fat = newItems.Sum(i => i.Fat);
             }
             else
             {
@@ -310,7 +308,7 @@ public class DietService(
             if (dto.Fat.HasValue) meal.Fat = dto.Fat.Value;
         }
 
-        var updated = await _mealRepo.UpdateAsync(meal, cancellationToken);
+        var updated = await _mealRepo.UpdateAsync(meal, newItems, cancellationToken);
         return MapToMealDto(updated);
     }
 

@@ -43,9 +43,27 @@ public class MealRepository(NexodusDbContext context) : IMealRepository
         return meal;
     }
 
-    public async Task<Meal> UpdateAsync(Meal meal, CancellationToken cancellationToken = default)
+    public async Task<Meal> UpdateAsync(Meal meal, IEnumerable<MealItem>? newItems = null, CancellationToken cancellationToken = default)
     {
         meal.UpdatedAt = DateTime.UtcNow;
+
+        if (newItems != null)
+        {
+            if (meal.Items.Count > 0)
+            {
+                _context.MealItems.RemoveRange(meal.Items);
+                meal.Items.Clear();
+            }
+
+            foreach (var item in newItems)
+            {
+                item.Id = item.Id == Guid.Empty ? Guid.NewGuid() : item.Id;
+                item.MealId = meal.Id;
+                _context.MealItems.Add(item);
+                meal.Items.Add(item);
+            }
+        }
+
         if (_context.Entry(meal).State == EntityState.Detached)
         {
             _context.Meals.Update(meal);
