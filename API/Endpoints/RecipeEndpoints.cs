@@ -111,6 +111,38 @@ public static class RecipeEndpoints
         .Produces<MealDto>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
+        // Generar receta con IA adaptada a los macros restantes (Estilo Yuki Fitia)
+        group.MapPost("/ai/match-macros", async (
+            MatchMacrosRecipeRequestDto dto,
+            IRecipeAiService aiService,
+            ClaimsPrincipal user,
+            CancellationToken ct) =>
+        {
+            var userId = user.GetUserId();
+            var recipe = await aiService.GenerateRecipeForRemainingMacrosAsync(userId, dto, ct);
+            return Results.Ok(recipe);
+        })
+        .WithName("GenerateRecipeForRemainingMacros")
+        .WithSummary("Genera una receta personalizada mediante IA para cubrir con precisión los macros restantes del día")
+        .Produces<RecipeDto>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+        // Modo Despensa: Sugerir recetas con lo que el usuario tiene a mano (Opción A Híbrido)
+        group.MapPost("/ai/pantry-cook", async (
+            PantryCookRequestDto dto,
+            IRecipeAiService aiService,
+            ClaimsPrincipal user,
+            CancellationToken ct) =>
+        {
+            var userId = user.GetUserId();
+            var suggestions = await aiService.SuggestRecipesFromPantryAsync(userId, dto, ct);
+            return Results.Ok(suggestions);
+        })
+        .WithName("SuggestRecipesFromPantry")
+        .WithSummary("Sugiere 3 recetas con ingredientes de la despensa y marca faltantes para la lista de compras")
+        .Produces<List<PantryCookSuggestionDto>>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
         // Actualizar receta propia
         group.MapPut("/{id:guid}", async (Guid id, UpdateRecipeDto dto, IRecipeService service, ClaimsPrincipal user, CancellationToken ct) =>
         {

@@ -13,6 +13,7 @@ public interface IGeminiVisionService
         string base64Image,
         string? mimeType,
         string? additionalContext,
+        string? hint = null,
         CancellationToken cancellationToken = default
     );
 }

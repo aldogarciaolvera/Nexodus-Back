@@ -28,6 +28,7 @@ public class GeminiVisionService(
         string base64Image,
         string? mimeType,
         string? additionalContext,
+        string? hint = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
@@ -53,24 +54,27 @@ public class GeminiVisionService(
 
         var determinedMimeType = string.IsNullOrWhiteSpace(mimeType) ? "image/jpeg" : mimeType.Trim();
 
-        var primaryModel = string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.5-flash-lite" : _options.Model.Trim();
+        var primaryModel = string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.8-flash" : _options.Model.Trim();
         var candidateModels = new List<string> { primaryModel };
-        if (!candidateModels.Contains("gemini-3.5-flash-lite"))
+        foreach (var m in new[] { "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash" })
         {
-            candidateModels.Add("gemini-3.5-flash-lite");
-        }
-        if (!candidateModels.Contains("gemini-3.5-flash"))
-        {
-            candidateModels.Add("gemini-3.5-flash");
+            if (!candidateModels.Contains(m))
+            {
+                candidateModels.Add(m);
+            }
         }
 
         var promptBuilder = new StringBuilder();
         promptBuilder.AppendLine("Eres Nexodus Lens, el analizador de visión computacional y nutrición deportiva de precisión de la plataforma Nexodus.");
         promptBuilder.AppendLine("Analiza minuciosamente la imagen del plato de comida o bebida adjunto.");
-        promptBuilder.AppendLine("Identifica el platillo general y desglosa cada ingrediente visible o deducible, estimando con realismo su gramaje, calorías y macronutrientes (proteína, carbohidratos, grasas).");
+        promptBuilder.AppendLine("Identifica el platillo general y desglosa cada ingrediente visible o deducible, determinando su estado de cocción exacto ('Raw', 'Boiled', 'Grilled', 'Fried', 'Baked', 'Steamed') para calcular la densidad calórica y retención de macronutrientes precisa.");
         if (!string.IsNullOrWhiteSpace(additionalContext))
         {
             promptBuilder.AppendLine($"Contexto o descripción aportada por el usuario: \"{additionalContext.Trim()}\".");
+        }
+        if (!string.IsNullOrWhiteSpace(hint))
+        {
+            promptBuilder.AppendLine($"Pista o aclaración adicional del usuario sobre ingredientes ocultos, aderezos o cocción: \"{hint.Trim()}\".");
         }
         promptBuilder.AppendLine("Debes responder ÚNICAMENTE con un JSON válido estructurado exactamente con el siguiente esquema:");
         promptBuilder.AppendLine("{");
@@ -82,8 +86,8 @@ public class GeminiVisionService(
         promptBuilder.AppendLine("  \"confidence\": 0.92,");
         promptBuilder.AppendLine("  \"notes\": \"Breve observación nutricional o recomendación\",");
         promptBuilder.AppendLine("  \"items\": [");
-        promptBuilder.AppendLine("    { \"foodName\": \"Pechuga de pollo\", \"estimatedGrams\": 180, \"calories\": 297, \"protein\": 38.0, \"carbs\": 0.0, \"fat\": 4.5 },");
-        promptBuilder.AppendLine("    { \"foodName\": \"Arroz integral\", \"estimatedGrams\": 120, \"calories\": 140, \"protein\": 3.5, \"carbs\": 28.0, \"fat\": 1.2 }");
+        promptBuilder.AppendLine("    { \"foodName\": \"Pechuga de pollo\", \"cookingState\": \"Grilled\", \"estimatedGrams\": 180, \"calories\": 297, \"protein\": 38.0, \"carbs\": 0.0, \"fat\": 4.5 },");
+        promptBuilder.AppendLine("    { \"foodName\": \"Arroz integral\", \"cookingState\": \"Boiled\", \"estimatedGrams\": 120, \"calories\": 140, \"protein\": 3.5, \"carbs\": 28.0, \"fat\": 1.2 }");
         promptBuilder.AppendLine("  ]");
         promptBuilder.AppendLine("}");
 

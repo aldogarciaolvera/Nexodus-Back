@@ -148,6 +148,7 @@ builder.Services.AddScoped<IWorkoutSessionService, WorkoutSessionService>();
 builder.Services.AddScoped<IDietService, DietService>();
 builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<IPantryService, PantryService>();
+builder.Services.AddScoped<IRecipeAiService, RecipeAiService>();
 builder.Services.AddScoped<IOpenFoodFactsService, OpenFoodFactsService>();
 builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
 

@@ -5,7 +5,8 @@ namespace Nexodus_Back.Application.DTOs.Diet;
 public record AnalyzeFoodImageRequestDto(
     string Base64Image,
     string? MimeType,
-    string? AdditionalContext
+    string? AdditionalContext,
+    string? Hint = null
 );
 
 public class FoodAnalysisResultDto
@@ -23,6 +24,7 @@ public class FoodAnalysisResultDto
 public class AnalyzedFoodItemDto
 {
     public string FoodName { get; set; } = string.Empty;
+    public string CookingState { get; set; } = "Raw"; // Raw, Boiled, Grilled, Fried, Baked, Steamed
     public double EstimatedGrams { get; set; }
     public double Calories { get; set; }
     public double Protein { get; set; }

@@ -256,7 +256,7 @@ public static class DietEndpoints
 
         group.MapPost("/lens/analyze", async (AnalyzeFoodImageRequestDto dto, IGeminiVisionService visionService, CancellationToken ct) =>
         {
-            var result = await visionService.AnalyzeMealImageAsync(dto.Base64Image, dto.MimeType, dto.AdditionalContext, ct);
+            var result = await visionService.AnalyzeMealImageAsync(dto.Base64Image, dto.MimeType, dto.AdditionalContext, dto.Hint, ct);
             return Results.Ok(result);
         })
         .AddEndpointFilter<ValidationFilter<AnalyzeFoodImageRequestDto>>()
