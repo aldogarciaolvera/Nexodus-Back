@@ -191,6 +191,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<NexodusDbContext>();
     await DataSeeder.SeedExercisesAsync(context, app.Environment.ContentRootPath, app.Logger);
+    await DataSeeder.SeedFoodCategoriesAsync(context, app.Logger);
     await DataSeeder.SeedFoodsAsync(context, app.Logger);
 }
 

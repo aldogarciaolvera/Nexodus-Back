@@ -20,8 +20,18 @@ public class CategoryRepository(NexodusDbContext context) : ICategoryRepository
     {
         return await _context.Categories
             .AsNoTracking()
-            .Where(c => c.UserId == userId)
+            .Where(c => c.UserId == userId && (c.Type == null || c.Type == "Money"))
+            .OrderBy(c => c.Name)
             .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Category>> GetByTypeAsync(string type, System.Threading.CancellationToken cancellationToken = default)
+    {
+        return await _context.Categories
+            .AsNoTracking()
+            .Where(c => c.Type.ToLower() == type.ToLower())
+            .OrderBy(c => c.Name)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<Category?> GetByIdAsync(Guid id)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Nexodus_Back.Application.DTOs.Category;
 using Nexodus_Back.Application.DTOs.Diet;
 using Nexodus_Back.Application.Interfaces;
 using Nexodus_Back.Core.Entities;
@@ -22,7 +23,8 @@ public class DietService(
     IFastingRepository fastingRepo,
     IUserRepository userRepo,
     IOpenFoodFactsService openFoodFactsService,
-    IWorkoutSessionRepository sessionRepo) : IDietService
+    IWorkoutSessionRepository sessionRepo,
+    ICategoryRepository categoryRepo) : IDietService
 {
     private readonly IDietTargetRepository _dietTargetRepo = dietTargetRepo ?? throw new ArgumentNullException(nameof(dietTargetRepo));
     private readonly IMealRepository _mealRepo = mealRepo ?? throw new ArgumentNullException(nameof(mealRepo));
@@ -32,6 +34,7 @@ public class DietService(
     private readonly IUserRepository _userRepo = userRepo ?? throw new ArgumentNullException(nameof(userRepo));
     private readonly IOpenFoodFactsService _openFoodFactsService = openFoodFactsService ?? throw new ArgumentNullException(nameof(openFoodFactsService));
     private readonly IWorkoutSessionRepository _sessionRepo = sessionRepo ?? throw new ArgumentNullException(nameof(sessionRepo));
+    private readonly ICategoryRepository _categoryRepo = categoryRepo ?? throw new ArgumentNullException(nameof(categoryRepo));
 
     #region Targets & Calculations
 
@@ -325,6 +328,21 @@ public class DietService(
 
     #region Foods
 
+    public async Task<List<CategoryDto>> GetFoodCategoriesAsync(CancellationToken cancellationToken = default)
+    {
+        var categories = await _categoryRepo.GetByTypeAsync("Food", cancellationToken);
+        return categories.Select(c => new CategoryDto
+        {
+            Id = c.Id,
+            UserId = c.UserId,
+            Name = c.Name,
+            Description = c.Description,
+            MonthlyLimit = c.MonthlyLimit,
+            Type = c.Type,
+            CreatedAt = c.CreatedAt
+        }).ToList();
+    }
+
     public async Task<FoodSearchResponseDto> SearchFoodsAsync(string query, Guid userId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var safePage = page > 0 ? page : 1;
@@ -341,16 +359,18 @@ public class DietService(
         };
     }
 
-    public async Task<FoodItemDto> GetFoodByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
+    public async Task<FoodItemDto> GetFoodByBarcodeAsync(string barcode, Guid? userId = null, CancellationToken cancellationToken = default)
     {
-        var food = await _foodRepo.GetByBarcodeAsync(barcode, cancellationToken);
+        var food = await _foodRepo.GetByBarcodeAsync(barcode, userId, cancellationToken);
         if (food == null)
         {
             // Fallback: Query global Open Food Facts API
             var externalFood = await _openFoodFactsService.LookupBarcodeAsync(barcode, cancellationToken);
             if (externalFood != null)
             {
-                // Cache into local database for future instant lookups
+                // Cache into local database for future instant lookups (as public shared food)
+                externalFood.IsCustom = false;
+                externalFood.UserId = null;
                 food = await _foodRepo.CreateAsync(externalFood, cancellationToken);
             }
         }
@@ -363,11 +383,155 @@ public class DietService(
 
     public async Task<FoodItemDto> CreateCustomFoodAsync(Guid userId, CreateFoodItemDto dto, CancellationToken cancellationToken = default)
     {
-        var food = new Food
+        if (dto.CategoryId.HasValue && string.IsNullOrWhiteSpace(dto.Category))
+        {
+            var cat = await _categoryRepo.GetByIdAsync(dto.CategoryId.Value);
+            if (cat != null) dto.Category = cat.Name;
+        }
+
+        // 1. Si el usuario ya cuenta con un alimento personalizado con el mismo código o nombre, actualizarlo para evitar duplicados
+        var existingCustom = await _foodRepo.GetUserCustomFoodAsync(userId, dto.Barcode, dto.Name, cancellationToken);
+        if (existingCustom != null)
+        {
+            existingCustom.Name = dto.Name;
+            existingCustom.Brand = dto.Brand;
+            existingCustom.Barcode = dto.Barcode ?? existingCustom.Barcode;
+            existingCustom.CategoryId = dto.CategoryId ?? existingCustom.CategoryId;
+            existingCustom.Category = dto.Category ?? existingCustom.Category;
+            existingCustom.ServingSize = dto.ServingSize;
+            existingCustom.ServingUnit = dto.ServingUnit;
+            existingCustom.Calories = dto.Calories;
+            existingCustom.Protein = dto.Protein;
+            existingCustom.Carbs = dto.Carbs;
+            existingCustom.Fat = dto.Fat;
+            existingCustom.Fiber = dto.Fiber;
+            existingCustom.SodiumMg = dto.SodiumMg;
+            existingCustom.PotassiumMg = dto.PotassiumMg;
+
+            var updated = await _foodRepo.UpdateAsync(existingCustom, cancellationToken);
+            return MapToFoodDto(updated);
+        }
+
+        // 2. Si ya existe un alimento público en el catálogo general:
+        // Como ya existe públicamente, este registro se almacena como copia personalizada del usuario para no sobreescribir el público
+        var existingPublic = await _foodRepo.GetPublicFoodAsync(dto.Barcode, dto.Name, cancellationToken);
+        if (existingPublic != null)
+        {
+            var userCustomFood = new Food
+            {
+                Name = dto.Name,
+                Brand = dto.Brand ?? existingPublic.Brand,
+                Barcode = dto.Barcode ?? existingPublic.Barcode,
+                CategoryId = dto.CategoryId ?? existingPublic.CategoryId,
+                Category = dto.Category ?? existingPublic.Category,
+                ServingSize = dto.ServingSize,
+                ServingUnit = dto.ServingUnit,
+                Calories = dto.Calories,
+                Protein = dto.Protein,
+                Carbs = dto.Carbs,
+                Fat = dto.Fat,
+                Fiber = dto.Fiber,
+                SodiumMg = dto.SodiumMg,
+                PotassiumMg = dto.PotassiumMg,
+                IsCustom = true,
+                UserId = userId
+            };
+
+            var createdCustom = await _foodRepo.CreateAsync(userCustomFood, cancellationToken);
+            return MapToFoodDto(createdCustom);
+        }
+
+        // 3. Es un alimento totalmente nuevo que no existía en el catálogo:
+        // ¡Se crea públicamente (IsCustom = false, UserId = null) para que TODOS los usuarios puedan verlo y consumirlo!
+        var newPublicFood = new Food
         {
             Name = dto.Name,
             Brand = dto.Brand,
             Barcode = dto.Barcode,
+            CategoryId = dto.CategoryId,
+            Category = dto.Category,
+            ServingSize = dto.ServingSize,
+            ServingUnit = dto.ServingUnit,
+            Calories = dto.Calories,
+            Protein = dto.Protein,
+            Carbs = dto.Carbs,
+            Fat = dto.Fat,
+            Fiber = dto.Fiber,
+            SodiumMg = dto.SodiumMg,
+            PotassiumMg = dto.PotassiumMg,
+            IsCustom = false, // Público para toda la comunidad
+            UserId = null     // Sin asignar a un único usuario (catálogo global)
+        };
+
+        var created = await _foodRepo.CreateAsync(newPublicFood, cancellationToken);
+        return MapToFoodDto(created);
+    }
+
+    public async Task<FoodItemDto> UpdateFoodAsync(Guid id, Guid userId, CreateFoodItemDto dto, CancellationToken cancellationToken = default)
+    {
+        var existing = await _foodRepo.GetByIdAsync(id, cancellationToken);
+        if (existing == null)
+            throw new NotFoundException($"Alimento con ID '{id}' no encontrado.");
+
+        if (dto.CategoryId.HasValue && string.IsNullOrWhiteSpace(dto.Category))
+        {
+            var cat = await _categoryRepo.GetByIdAsync(dto.CategoryId.Value);
+            if (cat != null) dto.Category = cat.Name;
+        }
+
+        // Si ya es un alimento personalizado del usuario autenticado, actualizarlo directamente
+        if (existing.IsCustom && existing.UserId == userId)
+        {
+            existing.Name = dto.Name;
+            existing.Brand = dto.Brand;
+            existing.Barcode = dto.Barcode;
+            existing.CategoryId = dto.CategoryId ?? existing.CategoryId;
+            existing.Category = dto.Category ?? existing.Category;
+            existing.ServingSize = dto.ServingSize;
+            existing.ServingUnit = dto.ServingUnit;
+            existing.Calories = dto.Calories;
+            existing.Protein = dto.Protein;
+            existing.Carbs = dto.Carbs;
+            existing.Fat = dto.Fat;
+            existing.Fiber = dto.Fiber;
+            existing.SodiumMg = dto.SodiumMg;
+            existing.PotassiumMg = dto.PotassiumMg;
+
+            var updated = await _foodRepo.UpdateAsync(existing, cancellationToken);
+            return MapToFoodDto(updated);
+        }
+
+        // Si es un alimento del sistema u otro, verificar si el usuario ya tenía una copia personalizada previa
+        var userCustom = await _foodRepo.GetUserCustomFoodAsync(userId, existing.Barcode ?? dto.Barcode, existing.Name, cancellationToken);
+        if (userCustom != null)
+        {
+            userCustom.Name = dto.Name;
+            userCustom.Brand = dto.Brand;
+            userCustom.Barcode = dto.Barcode ?? userCustom.Barcode;
+            userCustom.CategoryId = dto.CategoryId ?? userCustom.CategoryId;
+            userCustom.Category = dto.Category ?? userCustom.Category;
+            userCustom.ServingSize = dto.ServingSize;
+            userCustom.ServingUnit = dto.ServingUnit;
+            userCustom.Calories = dto.Calories;
+            userCustom.Protein = dto.Protein;
+            userCustom.Carbs = dto.Carbs;
+            userCustom.Fat = dto.Fat;
+            userCustom.Fiber = dto.Fiber;
+            userCustom.SodiumMg = dto.SodiumMg;
+            userCustom.PotassiumMg = dto.PotassiumMg;
+
+            var updated = await _foodRepo.UpdateAsync(userCustom, cancellationToken);
+            return MapToFoodDto(updated);
+        }
+
+        // Si no existía copia personalizada previa, crear una copia personalizada asociada a este usuario
+        var newCustom = new Food
+        {
+            Name = dto.Name,
+            Brand = dto.Brand,
+            Barcode = dto.Barcode ?? existing.Barcode,
+            CategoryId = dto.CategoryId ?? existing.CategoryId,
+            Category = dto.Category ?? existing.Category,
             ServingSize = dto.ServingSize,
             ServingUnit = dto.ServingUnit,
             Calories = dto.Calories,
@@ -381,7 +545,7 @@ public class DietService(
             UserId = userId
         };
 
-        var created = await _foodRepo.CreateAsync(food, cancellationToken);
+        var created = await _foodRepo.CreateAsync(newCustom, cancellationToken);
         return MapToFoodDto(created);
     }
 
@@ -578,6 +742,8 @@ public class DietService(
         Name = entity.Name,
         Brand = entity.Brand,
         Barcode = entity.Barcode,
+        CategoryId = entity.CategoryId,
+        Category = entity.Category,
         ServingSize = entity.ServingSize,
         ServingUnit = entity.ServingUnit,
         Calories = entity.Calories,

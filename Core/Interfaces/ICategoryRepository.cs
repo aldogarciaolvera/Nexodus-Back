@@ -8,6 +8,7 @@ namespace Nexodus_Back.Core.Interfaces;
 public interface ICategoryRepository
 {
     Task<IEnumerable<Category>> GetByUserIdAsync(Guid userId);
+    Task<IEnumerable<Category>> GetByTypeAsync(string type, CancellationToken cancellationToken = default);
     Task<Category?> GetByIdAsync(Guid id);
     Task<Category?> GetByNameAsync(Guid userId, string name);
     Task<Category> AddAsync(Category category);

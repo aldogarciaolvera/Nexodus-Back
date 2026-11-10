@@ -31,6 +31,7 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
             Name = request.Name,
             Description = request.Description,
             MonthlyLimit = request.MonthlyLimit,
+            Type = "Money",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -122,6 +123,7 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
             Name = category.Name,
             Description = category.Description,
             MonthlyLimit = category.MonthlyLimit,
+            Type = category.Type ?? "Money",
             CreatedAt = category.CreatedAt
         };
     }

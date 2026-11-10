@@ -41,16 +41,24 @@ namespace Nexodus_Back.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Money");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "Name")
-                        .IsUnique();
+                    b.HasIndex("Type");
+
+                    b.HasIndex("UserId", "Name");
 
                     b.ToTable("Categories");
                 });
@@ -300,6 +308,12 @@ namespace Nexodus_Back.Migrations
                     b.Property<double>("Carbs")
                         .HasColumnType("double precision");
 
+                    b.Property<string>("Category")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -338,6 +352,8 @@ namespace Nexodus_Back.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Barcode");
+
+                    b.HasIndex("CategoryId");
 
                     b.HasIndex("Name");
 
@@ -944,8 +960,7 @@ namespace Nexodus_Back.Migrations
                     b.HasOne("Nexodus_Back.Core.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("User");
                 });
@@ -1014,9 +1029,16 @@ namespace Nexodus_Back.Migrations
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Food", b =>
                 {
+                    b.HasOne("Nexodus_Back.Core.Entities.Category", "FoodCategory")
+                        .WithMany("Foods")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Nexodus_Back.Core.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("FoodCategory");
 
                     b.Navigation("User");
                 });
@@ -1182,6 +1204,8 @@ namespace Nexodus_Back.Migrations
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Category", b =>
                 {
                     b.Navigation("Finances");
+
+                    b.Navigation("Foods");
                 });
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Meal", b =>

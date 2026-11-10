@@ -44,7 +44,18 @@ public class NexodusDbContext : DbContext
 
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasIndex(c => new { c.UserId, c.Name }).IsUnique();
+            entity.Property(c => c.Type)
+                .HasMaxLength(20)
+                .HasDefaultValue("Money");
+
+            entity.HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(c => new { c.UserId, c.Name });
+            entity.HasIndex(c => c.Type);
         });
 
         modelBuilder.Entity<Finance>()
@@ -98,6 +109,12 @@ public class NexodusDbContext : DbContext
         {
             entity.HasIndex(f => f.Barcode);
             entity.HasIndex(f => f.Name);
+            entity.HasIndex(f => f.CategoryId);
+
+            entity.HasOne(f => f.FoodCategory)
+                .WithMany(c => c.Foods)
+                .HasForeignKey(f => f.CategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Meal>(entity =>

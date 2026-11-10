@@ -79,6 +79,95 @@ public static class DataSeeder
         logger?.LogInformation("DataSeeder: {Count} ejercicios insertados exitosamente.", exercisesToInsert.Count);
     }
 
+    public static async Task SeedFoodCategoriesAsync(NexodusDbContext context, ILogger? logger = null)
+    {
+        // 1. Asegurar que las categorías de comida existan
+        var existingCategories = await context.Categories
+            .Where(c => c.Type == "Food")
+            .ToListAsync();
+
+        var systemCategories = new (string Name, string Description)[]
+        {
+            ("Carnes", "Carne de res, pollo, pavo, cerdo y carnes rojas o blancas"),
+            ("Pescados y Mariscos", "Pescados blancos, salmón, atún, camarones y mariscos"),
+            ("Verduras", "Verduras, hortalizas y vegetales frescos o cocidos"),
+            ("Frutas", "Frutas frescas, bayas, plátanos, manzanas y cítricos"),
+            ("Lácteos y Huevos", "Huevos, leche, quesos, yogur griego y requesón"),
+            ("Cereales y Granos", "Arroz, avena, pasta, pan integral, quinoa y cereales"),
+            ("Legumbres", "Frijoles, lentejas, garbanzos, soya y habas"),
+            ("Frutos Secos y Semillas", "Nueces, almendras, cacahuates, chía y linaza"),
+            ("Grasas y Aceites", "Aceite de oliva, aguacate, mantequilla y aceites saludables"),
+            ("Bebidas", "Agua, café, té, infusiones y bebidas sin azúcar"),
+            ("Suplementos", "Proteína en polvo (whey), creatina, multivitaminas y aminoácidos"),
+            ("Snacks y Dulces", "Barras de proteína, botanas, galletas y chocolates"),
+            ("Otros", "Condimentos, especias, aderezos y alimentos varios")
+        };
+
+        var now = DateTime.UtcNow;
+        var toInsert = new List<Category>();
+
+        foreach (var (name, desc) in systemCategories)
+        {
+            var found = existingCategories.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (found == null)
+            {
+                var newCat = new Category
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = null,
+                    Name = name,
+                    Description = desc,
+                    Type = "Food",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                toInsert.Add(newCat);
+                existingCategories.Add(newCat);
+            }
+        }
+
+        if (toInsert.Count > 0)
+        {
+            await context.Categories.AddRangeAsync(toInsert);
+            await context.SaveChangesAsync();
+            logger?.LogInformation("DataSeeder: {Count} categorías de comida insertadas exitosamente.", toInsert.Count);
+        }
+
+        // 2. Asociar categorías a los alimentos existentes que tengan Category null
+        var foodsWithoutCategory = await context.Foods
+            .Where(f => f.CategoryId == null && string.IsNullOrEmpty(f.Category))
+            .ToListAsync();
+
+        if (foodsWithoutCategory.Count > 0)
+        {
+            var catMap = existingCategories.ToDictionary(c => c.Name.ToLower(), c => c);
+
+            foreach (var food in foodsWithoutCategory)
+            {
+                var n = food.Name.ToLower();
+                string targetCat = "Otros";
+
+                if (n.Contains("pollo") || n.Contains("res") || n.Contains("carne") || n.Contains("cerdo")) targetCat = "Carnes";
+                else if (n.Contains("atún") || n.Contains("salmón") || n.Contains("pescado") || n.Contains("marisco")) targetCat = "Pescados y Mariscos";
+                else if (n.Contains("huevo") || n.Contains("yogur") || n.Contains("leche") || n.Contains("queso")) targetCat = "Lácteos y Huevos";
+                else if (n.Contains("arroz") || n.Contains("avena") || n.Contains("pan") || n.Contains("pasta") || n.Contains("grano")) targetCat = "Cereales y Granos";
+                else if (n.Contains("manzana") || n.Contains("plátano") || n.Contains("fruta") || n.Contains("fresa")) targetCat = "Frutas";
+                else if (n.Contains("aguacate") || n.Contains("aceite")) targetCat = "Grasas y Aceites";
+                else if (n.Contains("proteína") || n.Contains("whey") || n.Contains("creatina")) targetCat = "Suplementos";
+                else if (n.Contains("clorets") || n.Contains("dulce") || n.Contains("snack")) targetCat = "Snacks y Dulces";
+
+                if (catMap.TryGetValue(targetCat.ToLower(), out var catObj))
+                {
+                    food.CategoryId = catObj.Id;
+                    food.Category = catObj.Name;
+                }
+            }
+
+            await context.SaveChangesAsync();
+            logger?.LogInformation("DataSeeder: {Count} alimentos existentes actualizados con su categoría.", foodsWithoutCategory.Count);
+        }
+    }
+
     public static async Task SeedFoodsAsync(NexodusDbContext context, ILogger? logger = null)
     {
         if (await context.Foods.AnyAsync())

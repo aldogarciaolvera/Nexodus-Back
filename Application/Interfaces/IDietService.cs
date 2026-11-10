@@ -19,9 +19,11 @@ public interface IDietService
     Task DeleteMealAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
 
     // Foods
+    Task<List<Nexodus_Back.Application.DTOs.Category.CategoryDto>> GetFoodCategoriesAsync(CancellationToken cancellationToken = default);
     Task<FoodSearchResponseDto> SearchFoodsAsync(string query, Guid userId, int page, int pageSize, CancellationToken cancellationToken = default);
-    Task<FoodItemDto> GetFoodByBarcodeAsync(string barcode, CancellationToken cancellationToken = default);
+    Task<FoodItemDto> GetFoodByBarcodeAsync(string barcode, Guid? userId = null, CancellationToken cancellationToken = default);
     Task<FoodItemDto> CreateCustomFoodAsync(Guid userId, CreateFoodItemDto dto, CancellationToken cancellationToken = default);
+    Task<FoodItemDto> UpdateFoodAsync(Guid id, Guid userId, CreateFoodItemDto dto, CancellationToken cancellationToken = default);
 
     // Water
     Task<WaterLogDto> GetWaterAsync(Guid userId, string date, CancellationToken cancellationToken = default);
