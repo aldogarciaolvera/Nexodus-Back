@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Amazon.S3;
 using DotNetEnv;
 using FluentValidation;
@@ -59,6 +60,16 @@ builder.Services.Configure<OpenFoodFactsOptions>(options =>
 
 builder.Services.AddHttpClient();
 
+// Configure JSON options to support String Enums in Minimal APIs
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.JsonOptions>(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
 // Configure Authentication & Authorization
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET");
 if (string.IsNullOrEmpty(jwtSecret)) throw new InvalidOperationException("JWT_SECRET is not set.");
@@ -118,6 +129,8 @@ builder.Services.AddScoped<IFoodRepository, FoodRepository>();
 builder.Services.AddScoped<IWaterLogRepository, WaterLogRepository>();
 builder.Services.AddScoped<IFastingRepository, FastingRepository>();
 builder.Services.AddScoped<IUserGamificationRepository, UserGamificationRepository>();
+builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
+builder.Services.AddScoped<IPantryRepository, PantryRepository>();
 builder.Services.AddScoped<IStorageService, S3StorageService>();
 
 // Application Services
@@ -133,6 +146,8 @@ builder.Services.AddScoped<IWorkoutLogService, WorkoutLogService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IWorkoutSessionService, WorkoutSessionService>();
 builder.Services.AddScoped<IDietService, DietService>();
+builder.Services.AddScoped<IRecipeService, RecipeService>();
+builder.Services.AddScoped<IPantryService, PantryService>();
 builder.Services.AddScoped<IOpenFoodFactsService, OpenFoodFactsService>();
 builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
 
@@ -184,6 +199,8 @@ app.MapRoutineEndpoints();
 app.MapWorkoutLogEndpoints();
 app.MapWorkoutSessionEndpoints();
 app.MapDietEndpoints();
+app.MapRecipeEndpoints();
+app.MapPantryEndpoints();
 app.MapGamificationEndpoints();
 
 // Seed initial data
@@ -193,6 +210,7 @@ using (var scope = app.Services.CreateScope())
     await DataSeeder.SeedExercisesAsync(context, app.Environment.ContentRootPath, app.Logger);
     await DataSeeder.SeedFoodCategoriesAsync(context, app.Logger);
     await DataSeeder.SeedFoodsAsync(context, app.Logger);
+    await DataSeeder.SeedRecipesAsync(context, app.Logger);
 }
 
 app.MapGet("/health", () => TypedResults.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }))

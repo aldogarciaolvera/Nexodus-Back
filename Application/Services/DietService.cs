@@ -24,7 +24,9 @@ public class DietService(
     IUserRepository userRepo,
     IOpenFoodFactsService openFoodFactsService,
     IWorkoutSessionRepository sessionRepo,
-    ICategoryRepository categoryRepo) : IDietService
+    ICategoryRepository categoryRepo,
+    IRoutineRepository routineRepo,
+    IUserGamificationRepository gamificationRepo) : IDietService
 {
     private readonly IDietTargetRepository _dietTargetRepo = dietTargetRepo ?? throw new ArgumentNullException(nameof(dietTargetRepo));
     private readonly IMealRepository _mealRepo = mealRepo ?? throw new ArgumentNullException(nameof(mealRepo));
@@ -35,6 +37,8 @@ public class DietService(
     private readonly IOpenFoodFactsService _openFoodFactsService = openFoodFactsService ?? throw new ArgumentNullException(nameof(openFoodFactsService));
     private readonly IWorkoutSessionRepository _sessionRepo = sessionRepo ?? throw new ArgumentNullException(nameof(sessionRepo));
     private readonly ICategoryRepository _categoryRepo = categoryRepo ?? throw new ArgumentNullException(nameof(categoryRepo));
+    private readonly IRoutineRepository _routineRepo = routineRepo ?? throw new ArgumentNullException(nameof(routineRepo));
+    private readonly IUserGamificationRepository _gamificationRepo = gamificationRepo ?? throw new ArgumentNullException(nameof(gamificationRepo));
 
     #region Targets & Calculations
 
@@ -52,7 +56,10 @@ public class DietService(
                 WaterTargetMl = 2500,
                 FastingProtocol = "16:8",
                 EatingWindowStart = "12:00",
-                EatingWindowEnd = "20:00"
+                EatingWindowEnd = "20:00",
+                IsCalorieCyclingEnabled = true,
+                WorkoutDayCarbMultiplier = 1.20,
+                RestDayCarbMultiplier = 0.80
             };
         }
 
@@ -71,7 +78,10 @@ public class DietService(
             WaterTargetMl = dto.WaterTargetMl,
             FastingProtocol = dto.FastingProtocol ?? "None",
             EatingWindowStart = dto.EatingWindowStart ?? "12:00",
-            EatingWindowEnd = dto.EatingWindowEnd ?? "20:00"
+            EatingWindowEnd = dto.EatingWindowEnd ?? "20:00",
+            IsCalorieCyclingEnabled = dto.IsCalorieCyclingEnabled,
+            WorkoutDayCarbMultiplier = dto.WorkoutDayCarbMultiplier > 0 ? dto.WorkoutDayCarbMultiplier : 1.20,
+            RestDayCarbMultiplier = dto.RestDayCarbMultiplier > 0 ? dto.RestDayCarbMultiplier : 0.80
         };
 
         var saved = await _dietTargetRepo.UpsertAsync(entity, cancellationToken);
@@ -181,16 +191,19 @@ public class DietService(
             ["Dinner"] = mealDtos.Where(m => m.MealType.Equals("Dinner", StringComparison.OrdinalIgnoreCase)).ToList()
         };
 
-        // Net Caloric Balance: Calculate calories burned in completed workout sessions on this date
+        // Net Caloric Balance & Workout Day detection
         double burnedCalories = 0;
+        bool hasLoggedWorkout = false;
         try
         {
             var sessions = await _sessionRepo.GetAllByUserIdAsync(userId, 50, cancellationToken);
             var completedToday = sessions
-                .Where(ws => !ws.IsActive && ws.StartTime.ToString("yyyy-MM-dd") == date)
+                .Where(ws => ws.StartTime.ToString("yyyy-MM-dd") == date)
                 .ToList();
 
-            foreach (var session in completedToday)
+            hasLoggedWorkout = completedToday.Count > 0;
+
+            foreach (var session in completedToday.Where(ws => !ws.IsActive))
             {
                 // Estimation: ~5 kcal per min + 0.02 kcal per kg of volume
                 var durationMins = session.DurationSeconds / 60.0;
@@ -201,6 +214,56 @@ public class DietService(
         catch
         {
             // Graceful fallback if session queries fail
+        }
+
+        // Determine if today is a Workout Day vs Rest Day
+        bool isWorkoutDay = hasLoggedWorkout;
+        if (!isWorkoutDay && DateTime.TryParse(date, out var parsedDate))
+        {
+            var dayName = parsedDate.DayOfWeek.ToString();
+            try
+            {
+                var gamification = await _gamificationRepo.GetByUserIdAsync(userId, cancellationToken);
+                var restDays = gamification?.ScheduledRestDays ?? "Saturday,Sunday";
+                var isRestDay = restDays.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Any(d => d.Equals(dayName, StringComparison.OrdinalIgnoreCase));
+
+                if (!isRestDay)
+                {
+                    // Check if there is a routine scheduled for this day
+                    var routines = await _routineRepo.GetAllByUserIdAsync(userId, cancellationToken);
+                    var routineAssigned = routines.Any(r => r.TargetDay.HasValue && r.TargetDay.Value == (int)parsedDate.DayOfWeek);
+                    isWorkoutDay = routineAssigned || !isRestDay;
+                }
+            }
+            catch
+            {
+                // If gamification/routine check fails, fallback to weekday = workout, weekend = rest
+                isWorkoutDay = parsedDate.DayOfWeek != DayOfWeek.Saturday && parsedDate.DayOfWeek != DayOfWeek.Sunday;
+            }
+        }
+
+        // Apply Calorie / Carb Cycling (Option A: +20% carbs on gym days, -20% on rest days)
+        double targetCarbsAdjusted = targetDto.CarbsGrams;
+        double targetCaloriesAdjusted = targetDto.TargetCalories;
+        string dayType = isWorkoutDay ? "Workout" : "Rest";
+
+        if (targetDto.IsCalorieCyclingEnabled)
+        {
+            if (isWorkoutDay)
+            {
+                var multiplier = targetDto.WorkoutDayCarbMultiplier > 0 ? targetDto.WorkoutDayCarbMultiplier : 1.20;
+                targetCarbsAdjusted = Math.Round(targetDto.CarbsGrams * multiplier, 1);
+                var extraCarbs = targetCarbsAdjusted - targetDto.CarbsGrams;
+                targetCaloriesAdjusted = Math.Round(targetDto.TargetCalories + (extraCarbs * 4.0), 1);
+            }
+            else
+            {
+                var multiplier = targetDto.RestDayCarbMultiplier > 0 ? targetDto.RestDayCarbMultiplier : 0.80;
+                targetCarbsAdjusted = Math.Round(targetDto.CarbsGrams * multiplier, 1);
+                var reducedCarbs = targetDto.CarbsGrams - targetCarbsAdjusted;
+                targetCaloriesAdjusted = Math.Round(targetDto.TargetCalories - (reducedCarbs * 4.0), 1);
+            }
         }
 
         var netCalories = totalCalories - burnedCalories;
@@ -215,6 +278,10 @@ public class DietService(
             ConsumedWaterMl = waterLog?.ConsumedMl ?? 0,
             BurnedCalories = Math.Round(burnedCalories, 1),
             NetCalories = Math.Round(netCalories, 1),
+            IsWorkoutDay = isWorkoutDay,
+            DayType = dayType,
+            TargetCarbsAdjusted = targetCarbsAdjusted,
+            TargetCaloriesAdjusted = targetCaloriesAdjusted,
             Target = targetDto,
             MealsByType = mealsByType,
             Meals = mealDtos
@@ -707,7 +774,10 @@ public class DietService(
         WaterTargetMl = entity.WaterTargetMl,
         FastingProtocol = entity.FastingProtocol,
         EatingWindowStart = entity.EatingWindowStart,
-        EatingWindowEnd = entity.EatingWindowEnd
+        EatingWindowEnd = entity.EatingWindowEnd,
+        IsCalorieCyclingEnabled = entity.IsCalorieCyclingEnabled,
+        WorkoutDayCarbMultiplier = entity.WorkoutDayCarbMultiplier,
+        RestDayCarbMultiplier = entity.RestDayCarbMultiplier
     };
 
     private static MealDto MapToMealDto(Meal entity) => new()

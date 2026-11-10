@@ -31,6 +31,10 @@ public class NexodusDbContext : DbContext
     public DbSet<WorkoutSession> WorkoutSessions { get; set; } = null!;
     public DbSet<WorkoutSet> WorkoutSets { get; set; } = null!;
     public DbSet<UserGamification> UserGamifications { get; set; } = null!;
+    public DbSet<Recipe> Recipes { get; set; } = null!;
+    public DbSet<RecipeIngredient> RecipeIngredients { get; set; } = null!;
+    public DbSet<RecipeStep> RecipeSteps { get; set; } = null!;
+    public DbSet<PantryItem> PantryItems { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -177,6 +181,67 @@ public class NexodusDbContext : DbContext
                 .WithOne()
                 .HasForeignKey<UserGamification>(g => g.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Recipe>(entity =>
+        {
+            entity.HasIndex(r => r.UserId);
+            entity.HasIndex(r => r.MealType);
+            entity.HasIndex(r => r.DietType);
+            entity.HasIndex(r => r.IsCommunity);
+            entity.HasIndex(r => r.ParentRecipeId);
+
+            entity.HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(r => r.ParentRecipe)
+                .WithMany(p => p.Variants)
+                .HasForeignKey(r => r.ParentRecipeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(r => r.Ingredients)
+                .WithOne(i => i.Recipe)
+                .HasForeignKey(i => i.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(r => r.Steps)
+                .WithOne(s => s.Recipe)
+                .HasForeignKey(s => s.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RecipeIngredient>(entity =>
+        {
+            entity.HasIndex(ri => ri.RecipeId);
+            entity.HasIndex(ri => ri.FoodId);
+
+            entity.HasOne(ri => ri.Food)
+                .WithMany()
+                .HasForeignKey(ri => ri.FoodId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<RecipeStep>(entity =>
+        {
+            entity.HasIndex(rs => new { rs.RecipeId, rs.StepNumber });
+        });
+
+        modelBuilder.Entity<PantryItem>(entity =>
+        {
+            entity.HasIndex(pi => pi.UserId);
+            entity.HasIndex(pi => pi.FoodId);
+
+            entity.HasOne(pi => pi.User)
+                .WithMany()
+                .HasForeignKey(pi => pi.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(pi => pi.Food)
+                .WithMany()
+                .HasForeignKey(pi => pi.FoodId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

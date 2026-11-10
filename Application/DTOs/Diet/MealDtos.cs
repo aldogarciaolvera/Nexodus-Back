@@ -80,6 +80,10 @@ public class DailyDietSummaryDto
     public double ConsumedWaterMl { get; set; }
     public double BurnedCalories { get; set; }
     public double NetCalories { get; set; }
+    public bool IsWorkoutDay { get; set; }
+    public string DayType { get; set; } = "Rest"; // "Workout" or "Rest"
+    public double TargetCarbsAdjusted { get; set; }
+    public double TargetCaloriesAdjusted { get; set; }
     public DietTargetDto? Target { get; set; }
     public Dictionary<string, List<MealDto>> MealsByType { get; set; } = new();
     public List<MealDto> Meals { get; set; } = [];
