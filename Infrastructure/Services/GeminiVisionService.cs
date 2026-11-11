@@ -55,9 +55,9 @@ public class GeminiVisionService(
 
         var determinedMimeType = string.IsNullOrWhiteSpace(mimeType) ? "image/jpeg" : mimeType.Trim();
 
-        var primaryModel = string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.8-flash" : _options.Model.Trim();
+        var primaryModel = string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.5-flash-lite" : _options.Model.Trim();
         var candidateModels = new List<string> { primaryModel };
-        foreach (var m in new[] { "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash" })
+        foreach (var m in new[] { "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash" })
         {
             if (!candidateModels.Contains(m))
             {

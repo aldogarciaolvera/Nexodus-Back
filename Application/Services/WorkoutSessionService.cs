@@ -136,28 +136,30 @@ public class WorkoutSessionService(
 
         double calculated1Rm = CalculateOneRepMax(dto.WeightKg, dto.Reps);
 
-        WorkoutSet setEntity;
+        WorkoutSet? setEntity = null;
 
         if (dto.SetId.HasValue && dto.SetId.Value != Guid.Empty)
         {
-            var existingSet = await _sessionRepository.GetSetByIdAsync(dto.SetId.Value, cancellationToken);
-            if (existingSet == null || existingSet.WorkoutSessionId != sessionId)
-            {
-                throw new NotFoundException($"No se encontró la serie con ID '{dto.SetId.Value}' dentro de esta sesión.");
-            }
+            setEntity = session.Sets?.FirstOrDefault(s => s.Id == dto.SetId.Value) 
+                ?? await _sessionRepository.GetSetByIdAsync(dto.SetId.Value, cancellationToken);
+        }
 
-            existingSet.SetOrder = dto.SetOrder;
-            existingSet.Type = dto.Type;
-            existingSet.WeightKg = dto.WeightKg;
-            existingSet.Reps = dto.Reps;
-            existingSet.Rpe = dto.Rpe;
-            existingSet.DurationSeconds = dto.DurationSeconds;
-            existingSet.CalculatedOneRepMax = calculated1Rm;
-            existingSet.IsCompleted = dto.IsCompleted;
-            existingSet.CompletedAt = dto.IsCompleted ? (existingSet.CompletedAt ?? DateTime.UtcNow) : null;
+        // Si no se encontró por SetId, buscar por ejercicio y orden en la sesión actual
+        setEntity ??= session.Sets?.FirstOrDefault(s => s.ExerciseId == dto.ExerciseId && s.SetOrder == dto.SetOrder);
 
-            await _sessionRepository.UpdateSetAsync(existingSet, cancellationToken);
-            setEntity = existingSet;
+        if (setEntity != null && setEntity.WorkoutSessionId == sessionId)
+        {
+            setEntity.SetOrder = dto.SetOrder;
+            setEntity.Type = dto.Type;
+            setEntity.WeightKg = dto.WeightKg;
+            setEntity.Reps = dto.Reps;
+            setEntity.Rpe = dto.Rpe;
+            setEntity.DurationSeconds = dto.DurationSeconds;
+            setEntity.CalculatedOneRepMax = calculated1Rm;
+            setEntity.IsCompleted = dto.IsCompleted;
+            setEntity.CompletedAt = dto.IsCompleted ? (setEntity.CompletedAt ?? DateTime.UtcNow) : null;
+
+            await _sessionRepository.UpdateSetAsync(setEntity, cancellationToken);
         }
         else
         {

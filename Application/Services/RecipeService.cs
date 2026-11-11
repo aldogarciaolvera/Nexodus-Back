@@ -243,11 +243,163 @@ public class RecipeService(
         var servings = dto.Servings <= 0 ? 1.0 : dto.Servings;
         var scale = servings / Math.Max(1.0, recipe.Servings);
 
+        // 1. Sincronizar y registrar cada ingrediente en el catálogo de alimentos (Food) de la BD para futuras comidas
+        var localFoodCache = new Dictionary<string, Food>(StringComparer.OrdinalIgnoreCase);
+        bool recipeIngredientsUpdated = false;
+
+        foreach (var ing in recipe.Ingredients)
+        {
+            try
+            {
+                var cleanName = ing.CustomFoodName?.Trim();
+                if (string.IsNullOrWhiteSpace(cleanName))
+                    continue;
+
+                Food? matchedFood = null;
+
+                // Si ya fue resuelto en este mismo lote de ingredientes
+                if (localFoodCache.TryGetValue(cleanName, out var cached))
+                {
+                    matchedFood = cached;
+                }
+                // Si el ingrediente ya cuenta con un FoodId asignado, validar que exista en la BD
+                else if (ing.FoodId.HasValue)
+                {
+                    matchedFood = await _foodRepo.GetByIdAsync(ing.FoodId.Value, cancellationToken);
+                }
+
+                // Buscar en alimentos personalizados del usuario
+                if (matchedFood == null)
+                {
+                    matchedFood = await _foodRepo.GetUserCustomFoodAsync(userId, null, cleanName, cancellationToken);
+                }
+
+                // Buscar en catálogo público de alimentos
+                if (matchedFood == null)
+                {
+                    matchedFood = await _foodRepo.GetPublicFoodAsync(null, cleanName, cancellationToken);
+                }
+
+                // Si no existe en la BD, crearlo como alimento personalizado del usuario para futuras comidas
+                if (matchedFood == null)
+                {
+                    double servingSize = 100.0;
+                    string servingUnit = string.IsNullOrWhiteSpace(ing.Unit) ? "g" : ing.Unit.Trim();
+                    double calories = ing.Calories;
+                    double protein = ing.Protein;
+                    double carbs = ing.Carbs;
+                    double fat = ing.Fat;
+
+                    var isGramsOrMl = servingUnit.Equals("g", StringComparison.OrdinalIgnoreCase) ||
+                                      servingUnit.Equals("ml", StringComparison.OrdinalIgnoreCase);
+
+                    if (isGramsOrMl && ing.Quantity > 0)
+                    {
+                        servingSize = 100.0;
+                        double factor = 100.0 / ing.Quantity;
+                        calories = Math.Round(ing.Calories * factor, 1);
+                        protein = Math.Round(ing.Protein * factor, 1);
+                        carbs = Math.Round(ing.Carbs * factor, 1);
+                        fat = Math.Round(ing.Fat * factor, 1);
+                    }
+                    else if (ing.Quantity > 0)
+                    {
+                        servingSize = Math.Round(ing.Quantity, 1);
+                    }
+
+                    var newFood = new Food
+                    {
+                        Name = cleanName,
+                        Category = "Ingredientes de Recetas",
+                        ServingSize = servingSize,
+                        ServingUnit = servingUnit,
+                        Calories = calories,
+                        Protein = protein,
+                        Carbs = carbs,
+                        Fat = fat,
+                        IsCustom = true,
+                        UserId = userId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    matchedFood = await _foodRepo.CreateAsync(newFood, cancellationToken);
+                    _logger.LogInformation("Ingrediente '{FoodName}' auto-registrado en la BD de alimentos para el usuario {UserId}", cleanName, userId);
+                }
+
+                if (matchedFood != null)
+                {
+                    localFoodCache[cleanName] = matchedFood;
+                    if (ing.FoodId != matchedFood.Id)
+                    {
+                        ing.FoodId = matchedFood.Id;
+                        recipeIngredientsUpdated = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo sincronizar el ingrediente '{FoodName}' en la BD de alimentos", ing.CustomFoodName);
+            }
+        }
+
+        var recipeName = !string.IsNullOrWhiteSpace(recipe.Name) ? recipe.Name.Trim() : "Receta";
+
+        // 2. Registrar también el plato/receta completo como alimento preparado para poder reutilizarlo directamente en otras comidas
+        try
+        {
+            var cleanRecipeName = recipeName;
+            if (!string.IsNullOrWhiteSpace(cleanRecipeName))
+            {
+                var existingDish = await _foodRepo.GetUserCustomFoodAsync(userId, null, cleanRecipeName, cancellationToken);
+                if (existingDish == null)
+                {
+                    var recipeServings = recipe.Servings <= 0 ? 1.0 : recipe.Servings;
+                    var dishFood = new Food
+                    {
+                        Name = cleanRecipeName,
+                        Category = "Platos Preparados",
+                        ServingSize = 1,
+                        ServingUnit = "porción",
+                        Calories = Math.Round(recipe.TotalCalories / recipeServings, 1),
+                        Protein = Math.Round(recipe.TotalProtein / recipeServings, 1),
+                        Carbs = Math.Round(recipe.TotalCarbs / recipeServings, 1),
+                        Fat = Math.Round(recipe.TotalFat / recipeServings, 1),
+                        IsCustom = true,
+                        UserId = userId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _foodRepo.CreateAsync(dishFood, cancellationToken);
+                    _logger.LogInformation("Plato de receta '{RecipeName}' auto-registrado en la BD de alimentos para el usuario {UserId}", cleanRecipeName, userId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo auto-registrar el plato de receta '{RecipeName}' en la BD de alimentos", recipeName);
+        }
+
+        if (recipeIngredientsUpdated)
+        {
+            try
+            {
+                await _recipeRepo.UpdateAsync(recipe, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudieron actualizar los FoodId de la receta '{RecipeId}'", recipe.Id);
+            }
+        }
+
         var mealId = Guid.NewGuid();
         var mealItems = recipe.Ingredients.Select(i =>
         {
-            var displayFoodName = !string.IsNullOrWhiteSpace(i.CookingState) && !i.CookingState.Equals("Raw", StringComparison.OrdinalIgnoreCase)
-                ? $"{i.CustomFoodName} ({i.CookingState})"
+            var cookingSpan = TranslateCookingState(i.CookingState);
+            var isRaw = string.IsNullOrWhiteSpace(cookingSpan) ||
+                        cookingSpan.Equals("Crudo", StringComparison.OrdinalIgnoreCase) ||
+                        i.CookingState.Equals("Raw", StringComparison.OrdinalIgnoreCase);
+
+            var displayFoodName = !isRaw
+                ? $"{i.CustomFoodName} ({cookingSpan})"
                 : i.CustomFoodName;
 
             return new MealItem
@@ -266,8 +418,8 @@ public class RecipeService(
         }).ToList();
 
         var mealName = servings != 1.0
-            ? $"{recipe.Name} ({servings:0.##} porciones)"
-            : recipe.Name;
+            ? $"{recipeName} ({servings:0.##} porciones)"
+            : recipeName;
 
         var meal = new Meal
         {
@@ -445,6 +597,30 @@ public class RecipeService(
                 StepNumber = s.StepNumber,
                 Instruction = s.Instruction
             }).ToList()
+        };
+    }
+
+    private static string TranslateCookingState(string? state)
+    {
+        if (string.IsNullOrWhiteSpace(state)) return string.Empty;
+        return state.Trim().ToLowerInvariant() switch
+        {
+            "liquid" => "Líquido",
+            "raw" => "Crudo",
+            "boiled" => "Hervido",
+            "grilled" => "A la plancha",
+            "fried" => "Frito",
+            "baked" => "Horneado",
+            "steamed" => "Al vapor",
+            "roasted" => "Asado",
+            "sauteed" or "sautéed" => "Salteado",
+            "airfried" or "air fryer" => "En freidora de aire",
+            "cooked" => "Cocido",
+            "mashed" => "En puré",
+            "toasted" => "Tostado",
+            "powder" => "En polvo",
+            "melted" => "Fundido",
+            _ => state
         };
     }
 

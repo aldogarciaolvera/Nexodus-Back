@@ -78,12 +78,13 @@ public class RecipeAiService(
         promptBuilder.AppendLine("  \"difficulty\": \"Easy\",");
         promptBuilder.AppendLine("  \"tags\": [\"PostWorkout\", \"Rápido\", \"AltoEnProteína\"],");
         promptBuilder.AppendLine("  \"ingredients\": [");
-        promptBuilder.AppendLine("    { \"customFoodName\": \"Pechuga de pollo\", \"cookingState\": \"Grilled\", \"quantity\": 160, \"unit\": \"g\", \"calories\": 264, \"protein\": 49.6, \"carbs\": 0, \"fat\": 5.8, \"isOptional\": false }");
+        promptBuilder.AppendLine("    { \"customFoodName\": \"Pechuga de pollo\", \"cookingState\": \"A la plancha\", \"quantity\": 160, \"unit\": \"g\", \"calories\": 264, \"protein\": 49.6, \"carbs\": 0, \"fat\": 5.8, \"isOptional\": false }");
         promptBuilder.AppendLine("  ],");
         promptBuilder.AppendLine("  \"steps\": [");
         promptBuilder.AppendLine("    { \"stepNumber\": 1, \"instruction\": \"Paso detallado de preparación\" }");
         promptBuilder.AppendLine("  ]");
         promptBuilder.AppendLine("}");
+        promptBuilder.AppendLine("IMPORTANTE: Para 'cookingState' usa siempre español: 'Crudo', 'Hervido', 'A la plancha', 'Frito', 'Horneado', 'Al vapor', 'Líquido', 'Salteado', 'Asado'.");
 
         var jsonResponse = await CallGeminiTextApiAsync(promptBuilder.ToString(), cancellationToken);
 
@@ -104,7 +105,7 @@ public class RecipeAiService(
             RecipeId = recipeId,
             FoodId = i.FoodId,
             CustomFoodName = i.CustomFoodName,
-            CookingState = string.IsNullOrWhiteSpace(i.CookingState) ? "Raw" : i.CookingState,
+            CookingState = NormalizeCookingState(i.CookingState),
             Quantity = i.Quantity,
             Unit = string.IsNullOrWhiteSpace(i.Unit) ? "g" : i.Unit,
             Calories = i.Calories,
@@ -266,7 +267,7 @@ public class RecipeAiService(
         promptBuilder.AppendLine("      \"usedIngredients\": [\"Pollo\", \"Arroz\"],");
         promptBuilder.AppendLine("      \"missingIngredients\": [\"Aceite de oliva\", \"Ajo\"],");
         promptBuilder.AppendLine("      \"ingredients\": [");
-        promptBuilder.AppendLine("        { \"customFoodName\": \"Pechuga de pollo\", \"cookingState\": \"Grilled\", \"quantity\": 150, \"unit\": \"g\", \"calories\": 247, \"protein\": 46.5, \"carbs\": 0, \"fat\": 5.4, \"isOptional\": false }");
+        promptBuilder.AppendLine("        { \"customFoodName\": \"Pechuga de pollo\", \"cookingState\": \"A la plancha\", \"quantity\": 150, \"unit\": \"g\", \"calories\": 247, \"protein\": 46.5, \"carbs\": 0, \"fat\": 5.4, \"isOptional\": false }");
         promptBuilder.AppendLine("      ],");
         promptBuilder.AppendLine("      \"steps\": [");
         promptBuilder.AppendLine("        { \"stepNumber\": 1, \"instruction\": \"Instrucción de cocina clara\" }");
@@ -274,6 +275,7 @@ public class RecipeAiService(
         promptBuilder.AppendLine("    }");
         promptBuilder.AppendLine("  ]");
         promptBuilder.AppendLine("}");
+        promptBuilder.AppendLine("IMPORTANTE: Para 'cookingState' usa siempre español: 'Crudo', 'Hervido', 'A la plancha', 'Frito', 'Horneado', 'Al vapor', 'Líquido', 'Salteado', 'Asado'.");
 
         var jsonResponse = await CallGeminiTextApiAsync(promptBuilder.ToString(), cancellationToken);
         var pureJson = AiJsonSanitizer.ExtractJson(jsonResponse);
@@ -316,11 +318,35 @@ public class RecipeAiService(
         }
     }
 
+    private static string NormalizeCookingState(string? state)
+    {
+        if (string.IsNullOrWhiteSpace(state)) return "Crudo";
+        return state.Trim().ToLowerInvariant() switch
+        {
+            "liquid" => "Líquido",
+            "raw" => "Crudo",
+            "boiled" => "Hervido",
+            "grilled" => "A la plancha",
+            "fried" => "Frito",
+            "baked" => "Horneado",
+            "steamed" => "Al vapor",
+            "roasted" => "Asado",
+            "sauteed" or "sautéed" => "Salteado",
+            "airfried" or "air fryer" => "En freidora de aire",
+            "cooked" => "Cocido",
+            "mashed" => "En puré",
+            "toasted" => "Tostado",
+            "powder" => "En polvo",
+            "melted" => "Fundido",
+            _ => state
+        };
+    }
+
     private async Task<string> CallGeminiTextApiAsync(string prompt, CancellationToken cancellationToken)
     {
-        var primaryModel = string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.8-flash" : _options.Model.Trim();
+        var primaryModel = string.IsNullOrWhiteSpace(_options.Model) ? "gemini-3.5-flash-lite" : _options.Model.Trim();
         var candidateModels = new List<string> { primaryModel };
-        foreach (var m in new[] { "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash" })
+        foreach (var m in new[] { "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash" })
         {
             if (!candidateModels.Contains(m))
             {

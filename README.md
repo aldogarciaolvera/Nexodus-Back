@@ -6,7 +6,7 @@ Backend API for Nexodus, a personal management application (Diet, Finance, TodoL
 
 *   **.NET 10 (C# 12+)** con características modernas (Primary Constructors, File-Scoped Namespaces, Collection Expressions).
 *   **PostgreSQL** como motor relacional.
-*   **Entity Framework Core** con consultas optimizadas (`.AsNoTracking()` y carga diferida selectiva).
+*   **Entity Framework Core** con consultas optimizadas (`.AsNoTracking()`, `QuerySplittingBehavior.SplitQuery` para evitar explosión cartesiana en colecciones múltiples y carga diferida selectiva).
 *   **JWT & BCrypt** para autenticación y seguridad con `JwtProvider` y `PasswordHasher`.
 *   **AWSSDK.S3** con cliente Singleton administrado y soporte para MinIO / Cloudflare R2 / AWS S3.
 *   **FluentValidation** acoplado mediante Endpoint Filters (`ValidationFilter<T>`) con cobertura del 100% de los endpoints de mutación.

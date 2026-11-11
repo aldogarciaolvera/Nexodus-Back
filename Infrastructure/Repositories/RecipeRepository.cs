@@ -20,6 +20,7 @@ public class RecipeRepository(NexodusDbContext context) : IRecipeRepository
     public async Task<Recipe?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Recipes
+            .AsSplitQuery()
             .Include(r => r.Ingredients.OrderBy(i => i.Id))
                 .ThenInclude(i => i.Food)
             .Include(r => r.Steps.OrderBy(s => s.StepNumber))
@@ -39,11 +40,7 @@ public class RecipeRepository(NexodusDbContext context) : IRecipeRepository
         CancellationToken cancellationToken = default)
     {
         var baseQuery = _context.Recipes
-            .AsNoTracking()
-            .Include(r => r.Ingredients)
-            .Include(r => r.Steps)
-            .Include(r => r.User)
-            .AsQueryable();
+            .AsNoTracking();
 
         if (communityOnly)
         {
@@ -82,6 +79,10 @@ public class RecipeRepository(NexodusDbContext context) : IRecipeRepository
         var totalCount = await baseQuery.CountAsync(cancellationToken);
 
         var items = await baseQuery
+            .AsSplitQuery()
+            .Include(r => r.Ingredients)
+            .Include(r => r.Steps)
+            .Include(r => r.User)
             .OrderByDescending(r => r.UserId == null) // Prioriza base oficial
             .ThenByDescending(r => r.CreatedAt)
             .Skip((page - 1) * pageSize)
@@ -95,6 +96,7 @@ public class RecipeRepository(NexodusDbContext context) : IRecipeRepository
     {
         return await _context.Recipes
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(r => r.Ingredients)
             .Include(r => r.Steps)
             .Include(r => r.User)
@@ -127,4 +129,3 @@ public class RecipeRepository(NexodusDbContext context) : IRecipeRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 }
-

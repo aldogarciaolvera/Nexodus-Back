@@ -29,7 +29,8 @@ Env.Load();
 // Configure Database
 var connectionString = $"Host={Environment.GetEnvironmentVariable("DB_HOST")};Database={Environment.GetEnvironmentVariable("DB_NAME")};Username={Environment.GetEnvironmentVariable("DB_USER")};Password={Environment.GetEnvironmentVariable("DB_PASS")};Port={Environment.GetEnvironmentVariable("DB_PORT")};";
 builder.Services.AddDbContext<NexodusDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, npgsql =>
+        npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
 // Strongly-typed options
 builder.Services.Configure<JwtOptions>(options =>
