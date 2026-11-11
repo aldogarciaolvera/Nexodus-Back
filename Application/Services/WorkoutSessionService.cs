@@ -292,8 +292,13 @@ public class WorkoutSessionService(
         {
             foreach (var set in sess.Sets.Where(s => s.IsCompleted && s.Exercise != null))
             {
-                var muscle = NormalizeMuscleGroup(set.Exercise.Muscle ?? set.Exercise.BodyPart);
-                if (!string.IsNullOrEmpty(muscle))
+                var muscle = NormalizeMuscleGroup(set.Exercise.Muscle);
+                if (muscle == "Otros" && !string.IsNullOrEmpty(set.Exercise.BodyPart))
+                {
+                    muscle = NormalizeMuscleGroup(set.Exercise.BodyPart);
+                }
+
+                if (!string.IsNullOrEmpty(muscle) && muscle != "Otros")
                 {
                     var time = set.CompletedAt ?? sess.EndTime ?? sess.StartTime;
                     if (!muscleLastTrained.TryGetValue(muscle, out var lastTime) || time > lastTime)
@@ -389,13 +394,42 @@ public class WorkoutSessionService(
     {
         if (string.IsNullOrWhiteSpace(raw)) return "Otros";
         string lower = raw.Trim().ToLowerInvariant();
-        if (lower.Contains("chest") || lower.Contains("pecho") || lower.Contains("pectoral")) return "Pecho";
-        if (lower.Contains("back") || lower.Contains("espalda") || lower.Contains("lat") || lower.Contains("dorsal")) return "Espalda";
-        if (lower.Contains("shoulder") || lower.Contains("hombro") || lower.Contains("deltoid")) return "Hombros";
-        if (lower.Contains("bicep") || lower.Contains("bíceps") || lower.Contains("brazo")) return "Bíceps";
-        if (lower.Contains("tricep") || lower.Contains("tríceps")) return "Tríceps";
-        if (lower.Contains("leg") || lower.Contains("quad") || lower.Contains("pierna") || lower.Contains("glute") || lower.Contains("hamstring")) return "Piernas";
-        if (lower.Contains("abs") || lower.Contains("core") || lower.Contains("abdominal")) return "Core";
+
+        // Pecho
+        if (lower.Contains("chest") || lower.Contains("pecho") || lower.Contains("pectoral"))
+            return "Pecho";
+
+        // Espalda
+        if (lower.Contains("back") || lower.Contains("espalda") || lower.Contains("lat") || lower.Contains("dorsal") ||
+            lower.Contains("trap") || lower.Contains("spine") || lower.Contains("scapulae"))
+            return "Espalda";
+
+        // Hombros
+        if (lower.Contains("shoulder") || lower.Contains("hombro") || lower.Contains("delt"))
+            return "Hombros";
+
+        // Bíceps / Brazos / Antebrazos
+        if (lower.Contains("bicep") || lower.Contains("bíceps") || lower.Contains("braquial") ||
+            lower.Contains("forearm") || lower.Contains("antebrazo") || lower.Contains("arm"))
+            return "Bíceps";
+
+        // Tríceps
+        if (lower.Contains("tricep") || lower.Contains("tríceps"))
+            return "Tríceps";
+
+        // Piernas
+        if (lower.Contains("leg") || lower.Contains("pierna") || lower.Contains("quad") || lower.Contains("cuádricep") ||
+            lower.Contains("glute") || lower.Contains("glúteo") || lower.Contains("hamstring") || lower.Contains("femoral") ||
+            lower.Contains("calf") || lower.Contains("calves") || lower.Contains("pantorrilla") || lower.Contains("gemelo") ||
+            lower.Contains("abductor") || lower.Contains("adductor"))
+            return "Piernas";
+
+        // Core / Abdomen
+        if (lower.Contains("abs") || lower.Contains("core") || lower.Contains("abdominal") ||
+            lower.Contains("oblique") || lower.Contains("oblicuo") || lower.Contains("waist") ||
+            lower.Contains("cintura") || lower.Contains("serratus"))
+            return "Core";
+
         return "Otros";
     }
 
