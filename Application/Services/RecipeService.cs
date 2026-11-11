@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Nexodus_Back.Application.DTOs.Diet;
 using Nexodus_Back.Application.Interfaces;
 using Nexodus_Back.Core.Entities;
@@ -19,12 +20,16 @@ public class RecipeService(
     IRecipeRepository recipeRepo,
     IMealRepository mealRepo,
     IUserRepository userRepo,
-    IFoodRepository foodRepo) : IRecipeService
+    IFoodRepository foodRepo,
+    IPantryRepository pantryRepo,
+    ILogger<RecipeService> logger) : IRecipeService
 {
     private readonly IRecipeRepository _recipeRepo = recipeRepo ?? throw new ArgumentNullException(nameof(recipeRepo));
     private readonly IMealRepository _mealRepo = mealRepo ?? throw new ArgumentNullException(nameof(mealRepo));
     private readonly IUserRepository _userRepo = userRepo ?? throw new ArgumentNullException(nameof(userRepo));
     private readonly IFoodRepository _foodRepo = foodRepo ?? throw new ArgumentNullException(nameof(foodRepo));
+    private readonly IPantryRepository _pantryRepo = pantryRepo ?? throw new ArgumentNullException(nameof(pantryRepo));
+    private readonly ILogger<RecipeService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public async Task<RecipeDto> GetByIdAsync(Guid id, Guid? userId = null, CancellationToken cancellationToken = default)
     {
@@ -102,7 +107,7 @@ public class RecipeService(
             TotalCarbs = Math.Round(totalCarbs, 1),
             TotalFat = Math.Round(totalFat, 1),
             Difficulty = string.IsNullOrWhiteSpace(dto.Difficulty) ? "Easy" : dto.Difficulty,
-            IsCommunity = dto.IsCommunity,
+            IsCommunity = true, // Siempre visible en comunidad para enriquecer el catálogo
             Tags = JsonSerializer.Serialize(dto.Tags ?? []),
             ImageUrl = dto.ImageUrl,
             Ingredients = ingredients,
@@ -152,7 +157,7 @@ public class RecipeService(
             TotalCarbs = Math.Round(totalCarbs, 1),
             TotalFat = Math.Round(totalFat, 1),
             Difficulty = string.IsNullOrWhiteSpace(dto.Difficulty) ? parent.Difficulty : dto.Difficulty,
-            IsCommunity = dto.IsCommunity,
+            IsCommunity = true, // Siempre visible en comunidad
             Tags = JsonSerializer.Serialize(dto.Tags ?? []),
             ImageUrl = dto.ImageUrl ?? parent.ImageUrl,
             Ingredients = ingredients,
@@ -224,8 +229,16 @@ public class RecipeService(
 
     public async Task<MealDto> LogRecipeAsMealAsync(Guid userId, LogRecipeAsMealDto dto, CancellationToken cancellationToken = default)
     {
-        var recipe = await _recipeRepo.GetByIdAsync(dto.RecipeId, cancellationToken)
-            ?? throw new NotFoundException($"Receta con ID '{dto.RecipeId}' no encontrada.");
+        var recipe = await _recipeRepo.GetByIdAsync(dto.RecipeId, cancellationToken);
+
+        if (recipe == null && dto.FallbackRecipe != null)
+        {
+            var created = await CreateAsync(userId, dto.FallbackRecipe, cancellationToken);
+            recipe = await _recipeRepo.GetByIdAsync(created.Id, cancellationToken);
+        }
+
+        if (recipe == null)
+            throw new NotFoundException($"Receta con ID '{dto.RecipeId}' no encontrada.");
 
         var servings = dto.Servings <= 0 ? 1.0 : dto.Servings;
         var scale = servings / Math.Max(1.0, recipe.Servings);
@@ -273,6 +286,46 @@ public class RecipeService(
         };
 
         var createdMeal = await _mealRepo.CreateAsync(meal, cancellationToken);
+
+        // Descontar automáticamente ingredientes utilizados de la despensa guardada del usuario
+        try
+        {
+            var userPantry = await _pantryRepo.GetByUserIdAsync(userId, cancellationToken);
+            if (userPantry.Count > 0)
+            {
+                foreach (var ing in recipe.Ingredients)
+                {
+                    var usedQty = ing.Quantity * scale;
+                    var ingName = ing.CustomFoodName.Trim().ToLowerInvariant();
+
+                    var matchingPantry = userPantry.FirstOrDefault(p =>
+                        (ing.FoodId.HasValue && p.FoodId == ing.FoodId) ||
+                        p.Name.Trim().ToLowerInvariant().Equals(ingName) ||
+                        p.Name.Trim().ToLowerInvariant().Contains(ingName) ||
+                        ingName.Contains(p.Name.Trim().ToLowerInvariant()));
+
+                    if (matchingPantry != null)
+                    {
+                        var newQty = Math.Max(0, Math.Round(matchingPantry.Quantity - usedQty, 1));
+                        matchingPantry.Quantity = newQty;
+                        matchingPantry.UpdatedAt = DateTime.UtcNow;
+
+                        if (newQty <= 0.001)
+                        {
+                            await _pantryRepo.DeleteAsync(matchingPantry, cancellationToken);
+                        }
+                        else
+                        {
+                            await _pantryRepo.UpdateAsync(matchingPantry, cancellationToken);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudieron deducir algunos ingredientes de la despensa para el usuario {UserId}", userId);
+        }
 
         return new MealDto
         {

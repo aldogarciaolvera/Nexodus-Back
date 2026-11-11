@@ -117,5 +117,6 @@ public class LogRecipeAsMealDto
     public string Date { get; set; } = string.Empty; // YYYY-MM-DD
     public string MealType { get; set; } = "Lunch"; // Breakfast, Lunch, Dinner, Snack
     public double Servings { get; set; } = 1.0;
+    public CreateRecipeDto? FallbackRecipe { get; set; }
 }
 

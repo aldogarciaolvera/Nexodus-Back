@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nexodus_Back.Application.DTOs.Diet;
 using Nexodus_Back.Application.Interfaces;
+using Nexodus_Back.Core.Entities;
 using Nexodus_Back.Core.Exceptions;
 using Nexodus_Back.Core.Interfaces;
 using Nexodus_Back.Infrastructure.Configuration;
@@ -25,11 +26,15 @@ public class RecipeAiService(
     IHttpClientFactory httpClientFactory,
     IOptions<GeminiOptions> options,
     IPantryRepository pantryRepo,
+    IRecipeRepository recipeRepo,
+    IUserRepository userRepo,
     ILogger<RecipeAiService> logger) : IRecipeAiService
 {
     private readonly IHttpClientFactory _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
     private readonly GeminiOptions _options = options?.Value ?? new GeminiOptions();
     private readonly IPantryRepository _pantryRepo = pantryRepo ?? throw new ArgumentNullException(nameof(pantryRepo));
+    private readonly IRecipeRepository _recipeRepo = recipeRepo ?? throw new ArgumentNullException(nameof(recipeRepo));
+    private readonly IUserRepository _userRepo = userRepo ?? throw new ArgumentNullException(nameof(userRepo));
     private readonly ILogger<RecipeAiService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public async Task<RecipeDto> GenerateRecipeForRemainingMacrosAsync(
@@ -92,33 +97,89 @@ public class RecipeAiService(
         var totalCarbs = rawResult.Ingredients.Sum(i => i.Carbs);
         var totalFat = rawResult.Ingredients.Sum(i => i.Fat);
 
-        return new RecipeDto
+        var recipeIngredients = rawResult.Ingredients.Select(i => new RecipeIngredient
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            FoodId = i.FoodId,
+            CustomFoodName = i.CustomFoodName,
+            CookingState = string.IsNullOrWhiteSpace(i.CookingState) ? "Raw" : i.CookingState,
+            Quantity = i.Quantity,
+            Unit = string.IsNullOrWhiteSpace(i.Unit) ? "g" : i.Unit,
+            Calories = i.Calories,
+            Protein = i.Protein,
+            Carbs = i.Carbs,
+            Fat = i.Fat,
+            IsOptional = i.IsOptional
+        }).ToList();
+
+        var recipeSteps = rawResult.Steps.OrderBy(s => s.StepNumber).Select((s, idx) => new RecipeStep
+        {
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            StepNumber = s.StepNumber > 0 ? s.StepNumber : idx + 1,
+            Instruction = s.Instruction
+        }).ToList();
+
+        var user = await _userRepo.GetByIdAsync(userId);
+        var tags = (rawResult.Tags ?? []).Concat(["ChefAI", "Macros"]).Distinct().ToList();
+
+        var recipeEntity = new Recipe
         {
             Id = recipeId,
             UserId = userId,
-            Name = rawResult.Name,
-            Description = rawResult.Description,
+            Name = rawResult.Name?.Trim() ?? "Receta Chef IA",
+            Description = rawResult.Description?.Trim() ?? string.Empty,
             MealType = string.IsNullOrWhiteSpace(rawResult.MealType) ? request.MealType : rawResult.MealType,
             DietType = string.IsNullOrWhiteSpace(rawResult.DietType) ? request.DietType : rawResult.DietType,
-            PrepTimeMinutes = rawResult.PrepTimeMinutes,
-            CookTimeMinutes = rawResult.CookTimeMinutes,
+            PrepTimeMinutes = rawResult.PrepTimeMinutes > 0 ? rawResult.PrepTimeMinutes : 10,
+            CookTimeMinutes = rawResult.CookTimeMinutes > 0 ? rawResult.CookTimeMinutes : 15,
             Servings = Math.Max(1, rawResult.Servings),
             TotalCalories = Math.Round(totalCalories, 1),
             TotalProtein = Math.Round(totalProtein, 1),
             TotalCarbs = Math.Round(totalCarbs, 1),
             TotalFat = Math.Round(totalFat, 1),
-            Difficulty = rawResult.Difficulty,
-            IsCommunity = false,
-            Tags = rawResult.Tags ?? [],
+            Difficulty = string.IsNullOrWhiteSpace(rawResult.Difficulty) ? "Easy" : rawResult.Difficulty,
+            IsCommunity = true, // Siempre visible y compartido en la comunidad
+            Tags = JsonSerializer.Serialize(tags),
             ImageUrl = "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
-            Ingredients = rawResult.Ingredients.Select(i => new RecipeIngredientDto
+            Ingredients = recipeIngredients,
+            Steps = recipeSteps
+        };
+
+        var savedRecipe = await _recipeRepo.CreateAsync(recipeEntity, cancellationToken);
+
+        return new RecipeDto
+        {
+            Id = savedRecipe.Id,
+            UserId = userId,
+            AuthorName = user?.Username ?? "Chef IA",
+            Name = savedRecipe.Name,
+            Description = savedRecipe.Description,
+            MealType = savedRecipe.MealType,
+            DietType = savedRecipe.DietType,
+            PrepTimeMinutes = savedRecipe.PrepTimeMinutes,
+            CookTimeMinutes = savedRecipe.CookTimeMinutes,
+            Servings = savedRecipe.Servings,
+            TotalCalories = savedRecipe.TotalCalories,
+            TotalProtein = savedRecipe.TotalProtein,
+            TotalCarbs = savedRecipe.TotalCarbs,
+            TotalFat = savedRecipe.TotalFat,
+            Difficulty = savedRecipe.Difficulty,
+            IsCommunity = true,
+            Tags = tags,
+            ImageUrl = savedRecipe.ImageUrl,
+            CreatedAt = savedRecipe.CreatedAt,
+            UpdatedAt = savedRecipe.UpdatedAt,
+            Ingredients = savedRecipe.Ingredients.Select(i => new RecipeIngredientDto
             {
-                Id = Guid.NewGuid(),
-                RecipeId = recipeId,
+                Id = i.Id,
+                RecipeId = savedRecipe.Id,
+                FoodId = i.FoodId,
                 CustomFoodName = i.CustomFoodName,
-                CookingState = string.IsNullOrWhiteSpace(i.CookingState) ? "Raw" : i.CookingState,
+                CookingState = i.CookingState,
                 Quantity = i.Quantity,
                 Unit = i.Unit,
                 Calories = i.Calories,
@@ -127,10 +188,10 @@ public class RecipeAiService(
                 Fat = i.Fat,
                 IsOptional = i.IsOptional
             }).ToList(),
-            Steps = rawResult.Steps.OrderBy(s => s.StepNumber).Select(s => new RecipeStepDto
+            Steps = savedRecipe.Steps.OrderBy(s => s.StepNumber).Select(s => new RecipeStepDto
             {
-                Id = Guid.NewGuid(),
-                RecipeId = recipeId,
+                Id = s.Id,
+                RecipeId = savedRecipe.Id,
                 StepNumber = s.StepNumber,
                 Instruction = s.Instruction
             }).ToList()
