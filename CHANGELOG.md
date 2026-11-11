@@ -1,3 +1,26 @@
+## [0.1.2] - 2026-11-11
+
+### Features
+
+- feat: Auditoria de Skills
+- feat: skill security-audit
+- feat: Grupos Musculares
+- feat: Recetas para ChefAI
+- feat: Fase 6B - Chef IA con Gemini, generador por macros restantes, modo despensa y cookingState en Vision
+- feat: Fase 6A - Modelos de recetas, despensa, ciclado de carbohidratos gym y migracion EF Core
+- feat: Implementacion de nuevas funciones para la dieta
+- feat: Resiliencia con fallback automatico a gemini-3.5-flash-lite ante 503/429
+- feat: Fase 5
+- feat: Fase 5 - Gamificacion, Rachas Inteligentes y The Nexodus Protocol
+- feat: Fase 3
+
+### Bug Fixes
+
+- fix: Cambio en recetas
+- fix: Cambio en la respuesta del modelo de IA
+- fix: Resolver DbUpdateConcurrencyException en actualizacion de comidas y sincronizacion de items
+- fix: Actualizar modelo de Gemini Vision a gemini-3.5-flash
+
 ## [0.1.0] - 2026-11-06
 
 ### Features
