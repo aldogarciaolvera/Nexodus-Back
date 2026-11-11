@@ -14,6 +14,7 @@ using Nexodus_Back.Application.Interfaces;
 using Nexodus_Back.Core.Exceptions;
 using Nexodus_Back.Core.Interfaces;
 using Nexodus_Back.Infrastructure.Configuration;
+using Nexodus_Back.Infrastructure.Serialization;
 
 namespace Nexodus_Back.Infrastructure.Services;
 
@@ -55,10 +56,11 @@ public class RecipeAiService(
             promptBuilder.AppendLine($"- Preferencias / Exclusiones del usuario: \"{request.Preferences.Trim()}\".");
         }
 
-        promptBuilder.AppendLine("Instrucciones de cálculo:");
+        promptBuilder.AppendLine("Instrucciones de cálculo y formato:");
         promptBuilder.AppendLine("1. Desglosa los ingredientes en gramos exactos con su estado de cocción ('Raw', 'Boiled', 'Grilled', 'Fried', 'Baked', 'Steamed').");
         promptBuilder.AppendLine("2. Calcula las calorías y macronutrientes sumando los ingredientes reales.");
-        promptBuilder.AppendLine("3. El resultado DEBE ser un JSON válido estructurado exactamente con el siguiente esquema:");
+        promptBuilder.AppendLine("3. REGLA ESTRICTA DE TIPOS JSON: Todos los campos numéricos ('calories', 'protein', 'carbs', 'fat', 'quantity', 'prepTimeMinutes', 'cookTimeMinutes', 'servings') DEBEN ser única y exclusivamente números (ej. 0, 15.5). NUNCA agregues sufijos, unidades o texto dentro de los números (NO escribas '0g', NO '0IU', NO '250kcal', NO 'trazas'). La unidad ('g', 'ml', etc.) va exclusivamente en el campo 'unit'.");
+        promptBuilder.AppendLine("4. El resultado DEBE ser un JSON válido estructurado exactamente con el siguiente esquema (sin comentarios ni propiedades inventadas):");
         promptBuilder.AppendLine("{");
         promptBuilder.AppendLine("  \"name\": \"Nombre del platillo en español\",");
         promptBuilder.AppendLine("  \"description\": \"Descripción apetitosa y explicación de por qué encaja en los macros\",");
@@ -79,9 +81,10 @@ public class RecipeAiService(
 
         var jsonResponse = await CallGeminiTextApiAsync(promptBuilder.ToString(), cancellationToken);
 
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var rawResult = JsonSerializer.Deserialize<CreateRecipeDto>(jsonResponse, options)
-            ?? throw new ValidationException("No se pudo interpretar la receta generada por el chef de IA.");
+        var rawResult = AiJsonSanitizer.Deserialize<CreateRecipeDto>(
+            jsonResponse,
+            "No se pudo interpretar la receta generada por el chef de IA. Por favor, intenta de nuevo.",
+            _logger);
 
         var recipeId = Guid.NewGuid();
         var totalCalories = rawResult.Ingredients.Sum(i => i.Calories);
@@ -179,7 +182,8 @@ public class RecipeAiService(
         promptBuilder.AppendLine("1. Si a una receta le faltan ingredientes menores indispensables (como condimentos, pizca de sal, aceite o un complemento), márcalos explícitamente en 'missingIngredients' para que se añadan a su lista de compras.");
         promptBuilder.AppendLine("2. En 'usedIngredients', coloca los ingredientes de su despensa que sí se aprovecharon.");
         promptBuilder.AppendLine("3. En 'matchPercentage', pon un número de 0 a 100 indicando qué tan completa está la receta con su despensa.");
-        promptBuilder.AppendLine("4. Devuelve ÚNICAMENTE un JSON con un array con 3 recetas bajo la clave 'recipes':");
+        promptBuilder.AppendLine("4. REGLA ESTRICTA DE TIPOS JSON: Todos los campos numéricos ('totalCalories', 'totalProtein', 'totalCarbs', 'totalFat', 'matchPercentage', 'calories', 'protein', 'carbs', 'fat', 'quantity', 'prepTimeMinutes', 'cookTimeMinutes', 'servings') DEBEN ser únicamente números (ej. 0, 15.5). NUNCA agregues sufijos, unidades o texto dentro de los números (NO escribas '0g', NO '0IU', NO 'kcal', NO 'trazas').");
+        promptBuilder.AppendLine("5. Devuelve ÚNICAMENTE un JSON con un array con 3 recetas bajo la clave 'recipes':");
         promptBuilder.AppendLine("{");
         promptBuilder.AppendLine("  \"recipes\": [");
         promptBuilder.AppendLine("    {");
@@ -209,17 +213,31 @@ public class RecipeAiService(
         promptBuilder.AppendLine("}");
 
         var jsonResponse = await CallGeminiTextApiAsync(promptBuilder.ToString(), cancellationToken);
+        var pureJson = AiJsonSanitizer.ExtractJson(jsonResponse);
+        var sanitized = AiJsonSanitizer.Sanitize(pureJson);
 
-        var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        using var doc = JsonDocument.Parse(jsonResponse);
-        if (doc.RootElement.TryGetProperty("recipes", out var recipesElem))
+        try
         {
-            var list = JsonSerializer.Deserialize<List<PantryCookSuggestionDto>>(recipesElem.GetRawText(), jsonOptions);
-            return list ?? [];
-        }
+            using var doc = JsonDocument.Parse(sanitized, new JsonDocumentOptions
+            {
+                AllowTrailingCommas = true,
+                CommentHandling = JsonCommentHandling.Skip
+            });
 
-        var directList = JsonSerializer.Deserialize<List<PantryCookSuggestionDto>>(jsonResponse, jsonOptions);
-        return directList ?? [];
+            if (doc.RootElement.TryGetProperty("recipes", out var recipesElem))
+            {
+                var list = JsonSerializer.Deserialize<List<PantryCookSuggestionDto>>(recipesElem.GetRawText(), AiJsonSanitizer.Options);
+                return list ?? [];
+            }
+
+            var directList = JsonSerializer.Deserialize<List<PantryCookSuggestionDto>>(sanitized, AiJsonSanitizer.Options);
+            return directList ?? [];
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Error al deserializar sugerencias de despensa de Gemini. Raw: {Raw}. Sanitized: {Sanitized}", jsonResponse, sanitized);
+            throw new ValidationException("No se pudieron interpretar las recetas sugeridas por el chef de IA. Por favor, intenta de nuevo.");
+        }
     }
 
     #region Private Gemini Invocation
@@ -335,22 +353,7 @@ public class RecipeAiService(
             throw new ValidationException("Respuesta vacía recibida desde el Chef IA.");
         }
 
-        var cleanJson = textContent.Trim();
-        if (cleanJson.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-        {
-            cleanJson = cleanJson[7..];
-        }
-        else if (cleanJson.StartsWith("```"))
-        {
-            cleanJson = cleanJson[3..];
-        }
-
-        if (cleanJson.EndsWith("```"))
-        {
-            cleanJson = cleanJson[..^3];
-        }
-
-        return cleanJson.Trim();
+        return AiJsonSanitizer.ExtractJson(textContent);
     }
 
     #endregion

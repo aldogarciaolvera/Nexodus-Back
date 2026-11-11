@@ -12,6 +12,7 @@ using Nexodus_Back.Application.DTOs.Diet;
 using Nexodus_Back.Application.Interfaces;
 using Nexodus_Back.Core.Exceptions;
 using Nexodus_Back.Infrastructure.Configuration;
+using Nexodus_Back.Infrastructure.Serialization;
 
 namespace Nexodus_Back.Infrastructure.Services;
 
@@ -208,36 +209,10 @@ public class GeminiVisionService(
                 throw new ValidationException("Respuesta vacía recibida desde el modelo de visión.");
             }
 
-            // Clean markdown code blocks if present (```json ... ```)
-            var cleanJson = textContent.Trim();
-            if (cleanJson.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-            {
-                cleanJson = cleanJson[7..];
-            }
-            else if (cleanJson.StartsWith("```"))
-            {
-                cleanJson = cleanJson[3..];
-            }
-
-            if (cleanJson.EndsWith("```"))
-            {
-                cleanJson = cleanJson[..^3];
-            }
-
-            cleanJson = cleanJson.Trim();
-
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            var result = JsonSerializer.Deserialize<FoodAnalysisResultDto>(cleanJson, options);
-            if (result == null)
-            {
-                throw new ValidationException("No se pudo interpretar el resultado nutricional de la imagen.");
-            }
-
-            return result;
+            return AiJsonSanitizer.Deserialize<FoodAnalysisResultDto>(
+                textContent,
+                "No se pudo interpretar el resultado nutricional de la imagen.",
+                _logger);
         }
         catch (ValidationException)
         {

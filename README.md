@@ -43,8 +43,11 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     *   Motor de fatiga y recuperación muscular acumulativa por grupo muscular (pecho, espalda, hombros, piernas, brazos, core) basado en decaimiento exponencial en 48-72h.
     *   Cálculo automático de récords personales por ejercicio (Max Weight, Max Reps, Max 1RM, Max Volume).
     *   Consolidación de sesión con volumen neto (excluyendo calentamiento) y otorgamiento de Nexodus XP (NXP).
-*   **Módulo de Nutrición Inteligente & Nexodus Lens (Fase 3):**
+*   **Módulo de Nutrición Inteligente, Chef IA & Nexodus Lens:**
     *   **Nexodus Lens (Visión Multimodal con Google Gemini):** Reconocimiento inteligente de platos y alimentos a partir de una fotografía en base64, estimando platillo, ingredientes, gramajes aproximados, calorías y macronutrientes estructurados.
+    *   **Chef IA y Ajuste de Macros Restantes (`/api/recipes/ai/match-macros`):** Generación de recetas personalizadas calculadas para cuadrar con los macronutrientes restantes del día, desglosando ingredientes en gramos y pasos de cocina detallados.
+    *   **Modo Despensa ('Cocina con lo que tienes' - `/api/recipes/ai/pantry-cook`):** Sugerencia de recetas basadas en el inventario real de la despensa del usuario, calculando porcentaje de afinidad e identificando ingredientes faltantes.
+    *   **Sanitizador y Deserializador Resiliente de JSON para IA (`AiJsonSanitizer`):** Módulo tolerante a fallos que extrae estructuras JSON puras de respuestas de Gemini, corrige defectos sintácticos comunes de LLMs (unidades pegadas en números como `0.0IU`, `0.0g`, `250kcal`, comas omitidas, comentarios y números en strings) y captura errores mediante `ValidationException` controladas.
     *   **Integración Global con Open Food Facts:** Búsqueda automática por código de barras comercial con fallback a la base de datos abierta global de Open Food Facts (sin costo ni API key, con caching automático en PostgreSQL).
     *   **Balance Calórico Neto Dinámico:** Cálculo en tiempo real de calorías consumidas vs calorías quemadas en sesiones de entrenamiento (`NetCalories = ConsumedCalories - BurnedCalories`).
 
@@ -287,9 +290,9 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```
     Configura tus credenciales de base de datos PostgreSQL, configuración JWT y **credenciales S3 (AWS SDK / MinIO)** dentro del `.env`.
 
-### Cómo Obtener y Configurar tu Google Gemini API Key (Nexodus Lens)
+### Cómo Obtener y Configurar tu Google Gemini API Key (Chef IA & Nexodus Lens)
 
-Nexodus Lens utiliza el modelo multimodal `gemini-2.5-flash` para el reconocimiento instantáneo de platos y macronutrientes. Para activarlo:
+Nexodus Lens y el Chef IA utilizan el modelo `gemini-3.8-flash` (con respaldo a `gemini-3.5-flash-lite`) para la generación y reconocimiento inteligente de recetas y platos. Para activarlo:
 
 1. **Entrar a Google AI Studio:**
    - Dirígete a [Google AI Studio](https://aistudio.google.com/).
@@ -302,7 +305,7 @@ Nexodus Lens utiliza el modelo multimodal `gemini-2.5-flash` para el reconocimie
    - Abre tu archivo `.env` en la raíz de `Nexodus-Back` y añade:
      ```env
      GEMINI_API_KEY=AIzaSyTuClaveDeApiAqui
-     GEMINI_MODEL=gemini-2.5-flash
+     GEMINI_MODEL=gemini-3.8-flash
      ```
    *Nota: La capa gratuita de Google AI Studio ofrece miles de peticiones mensuales sin costo. Si la variable no está configurada, el endpoint retornará una respuesta ProblemDetails explicativa indicando cómo habilitarla.*
 
