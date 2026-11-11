@@ -118,3 +118,4 @@ public class LogRecipeAsMealDto
     public string MealType { get; set; } = "Lunch"; // Breakfast, Lunch, Dinner, Snack
     public double Servings { get; set; } = 1.0;
 }
+

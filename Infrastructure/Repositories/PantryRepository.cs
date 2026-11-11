@@ -64,3 +64,4 @@ public class PantryRepository(NexodusDbContext context) : IPantryRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 }
+

@@ -32,3 +32,4 @@ public class Recipe
     public ICollection<RecipeIngredient> Ingredients { get; set; } = [];
     public ICollection<RecipeStep> Steps { get; set; } = [];
 }
+

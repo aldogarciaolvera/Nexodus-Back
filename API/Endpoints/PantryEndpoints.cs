@@ -78,3 +78,4 @@ public static class PantryEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound);
     }
 }
+

@@ -18,3 +18,4 @@ public class PantryItem
     public User? User { get; set; }
     public Food? Food { get; set; }
 }
+

@@ -20,3 +20,4 @@ public class RecipeIngredient
     public Recipe? Recipe { get; set; }
     public Food? Food { get; set; }
 }
+

@@ -123,3 +123,4 @@ public class PantryService(
         FatPer100g = entity.Food?.Fat
     };
 }
+

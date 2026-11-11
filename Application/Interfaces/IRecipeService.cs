@@ -25,3 +25,4 @@ public interface IRecipeService
     Task DeleteAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
     Task<MealDto> LogRecipeAsMealAsync(Guid userId, LogRecipeAsMealDto dto, CancellationToken cancellationToken = default);
 }
+

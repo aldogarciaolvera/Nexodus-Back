@@ -44,3 +44,4 @@ public class PantryCookSuggestionDto
     public List<CreateRecipeIngredientDto> Ingredients { get; set; } = [];
     public List<CreateRecipeStepDto> Steps { get; set; } = [];
 }
+

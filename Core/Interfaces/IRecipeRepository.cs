@@ -23,3 +23,4 @@ public interface IRecipeRepository
     Task<Recipe> UpdateAsync(Recipe recipe, CancellationToken cancellationToken = default);
     Task DeleteAsync(Recipe recipe, CancellationToken cancellationToken = default);
 }
+

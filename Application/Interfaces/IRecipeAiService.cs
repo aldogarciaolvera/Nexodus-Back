@@ -21,3 +21,4 @@ public interface IRecipeAiService
         PantryCookRequestDto request,
         CancellationToken cancellationToken = default);
 }
+

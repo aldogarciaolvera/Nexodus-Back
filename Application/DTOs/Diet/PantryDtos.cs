@@ -40,3 +40,4 @@ public class UpdatePantryItemDto
     public string? Category { get; set; }
     public DateTime? ExpirationDate { get; set; }
 }
+

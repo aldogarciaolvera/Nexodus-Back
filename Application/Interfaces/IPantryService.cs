@@ -14,3 +14,4 @@ public interface IPantryService
     Task DeleteItemAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
     Task<List<PantryItemDto>> BulkAddItemsAsync(Guid userId, List<CreatePantryItemDto> dtos, CancellationToken cancellationToken = default);
 }
+

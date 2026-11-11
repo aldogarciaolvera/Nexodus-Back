@@ -15,3 +15,4 @@ public interface IPantryRepository
     Task DeleteAsync(PantryItem item, CancellationToken cancellationToken = default);
     Task DeleteRangeAsync(IEnumerable<PantryItem> items, CancellationToken cancellationToken = default);
 }
+
