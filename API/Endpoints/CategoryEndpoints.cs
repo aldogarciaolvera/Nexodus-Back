@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -20,10 +21,10 @@ public static class CategoryEndpoints
             .WithTags("Categories")
             .RequireAuthorization();
 
-        group.MapPost("/", async (CreateCategoryRequest request, ICategoryService categoryService, ClaimsPrincipal user) =>
+        group.MapPost("/", async (CreateCategoryRequest request, ICategoryService categoryService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var category = await categoryService.CreateAsync(userId, request);
+            var category = await categoryService.CreateAsync(userId, request, ct);
             return Results.Created($"/api/categories/{category.Id}", ApiResponse<CategoryDto>.Success(category, 201));
         })
         .AddEndpointFilter<ValidationFilter<CreateCategoryRequest>>()
@@ -33,20 +34,20 @@ public static class CategoryEndpoints
         .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status409Conflict);
 
-        group.MapGet("/", async (ICategoryService categoryService, ClaimsPrincipal user) =>
+        group.MapGet("/", async (ICategoryService categoryService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var categories = await categoryService.GetAllByUserIdAsync(userId);
+            var categories = await categoryService.GetAllByUserIdAsync(userId, ct);
             return Results.Ok(ApiResponse<IEnumerable<CategoryDto>>.Success(categories));
         })
         .WithName("GetAllCategories")
         .WithSummary("Obtiene todas las categorías del usuario")
         .Produces<ApiResponse<IEnumerable<CategoryDto>>>(StatusCodes.Status200OK);
 
-        group.MapGet("/{id:guid}", async (Guid id, ICategoryService categoryService, ClaimsPrincipal user) =>
+        group.MapGet("/{id:guid}", async (Guid id, ICategoryService categoryService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var category = await categoryService.GetByIdAsync(userId, id);
+            var category = await categoryService.GetByIdAsync(userId, id, ct);
             return Results.Ok(ApiResponse<CategoryDto>.Success(category));
         })
         .WithName("GetCategoryById")
@@ -54,10 +55,10 @@ public static class CategoryEndpoints
         .Produces<ApiResponse<CategoryDto>>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPut("/{id:guid}", async (Guid id, UpdateCategoryRequest request, ICategoryService categoryService, ClaimsPrincipal user) =>
+        group.MapPut("/{id:guid}", async (Guid id, UpdateCategoryRequest request, ICategoryService categoryService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var category = await categoryService.UpdateAsync(userId, id, request);
+            var category = await categoryService.UpdateAsync(userId, id, request, ct);
             return Results.Ok(ApiResponse<CategoryDto>.Success(category));
         })
         .AddEndpointFilter<ValidationFilter<UpdateCategoryRequest>>()
@@ -68,10 +69,10 @@ public static class CategoryEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status409Conflict);
 
-        group.MapDelete("/{id:guid}", async (Guid id, ICategoryService categoryService, ClaimsPrincipal user) =>
+        group.MapDelete("/{id:guid}", async (Guid id, ICategoryService categoryService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            await categoryService.DeleteAsync(userId, id);
+            await categoryService.DeleteAsync(userId, id, ct);
             return Results.Ok(ApiResponse<string>.Success("Registro eliminado"));
         })
         .WithName("DeleteCategory")

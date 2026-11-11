@@ -24,7 +24,8 @@ public class AuthService(
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
         request.Email = request.Email?.ToLowerInvariant() ?? string.Empty;
-        var existingUser = await _userRepository.GetByEmailAsync(request.Email) ?? await _userRepository.GetByUsernameAsync(request.Username);
+        var existingUser = await _userRepository.GetByEmailAsync(request.Email, cancellationToken) 
+            ?? await _userRepository.GetByUsernameAsync(request.Username, cancellationToken);
         
         if (existingUser != null)
         {
@@ -42,50 +43,64 @@ public class AuthService(
             UpdatedAt = DateTime.UtcNow
         };
 
-        var createdUser = await _userRepository.AddAsync(user);
+        var createdUser = await _userRepository.AddAsync(user, cancellationToken);
 
-        return await GenerateAuthResponseAsync(createdUser);
+        return await GenerateAuthResponseAsync(createdUser, cancellationToken);
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         request.Email = request.Email?.ToLowerInvariant() ?? string.Empty;
-        var user = await _userRepository.GetByEmailAsync(request.Email);
+        var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
         
         if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
             throw new UnauthorizedException("Correo o contraseña inválidos.");
         }
 
-        return await GenerateAuthResponseAsync(user);
+        return await GenerateAuthResponseAsync(user, cancellationToken);
     }
 
     public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
     {
-        var refreshToken = await _userRepository.GetRefreshTokenAsync(request.RefreshToken);
+        var refreshToken = await _userRepository.GetRefreshTokenAsync(request.RefreshToken, cancellationToken);
 
         if (refreshToken == null || refreshToken.Invalidated || refreshToken.Used || refreshToken.ExpiryDate < DateTime.UtcNow)
         {
-            throw new UnauthorizedException("Refresh token inválido.");
+            throw new UnauthorizedException("Refresh token inválido o revocado.");
         }
 
         refreshToken.Used = true;
-        await _userRepository.UpdateRefreshTokenAsync(refreshToken);
+        await _userRepository.UpdateRefreshTokenAsync(refreshToken, cancellationToken);
 
         if (refreshToken.User == null)
         {
              throw new UnauthorizedException("Usuario no encontrado.");
         }
 
-        return await GenerateAuthResponseAsync(refreshToken.User);
+        return await GenerateAuthResponseAsync(refreshToken.User, cancellationToken);
     }
 
-    private async Task<AuthResponse> GenerateAuthResponseAsync(User user)
+    public async Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return;
+
+        var token = await _userRepository.GetRefreshTokenAsync(refreshToken, cancellationToken);
+        if (token != null)
+        {
+            token.Used = true;
+            token.Invalidated = true;
+            await _userRepository.UpdateRefreshTokenAsync(token, cancellationToken);
+        }
+    }
+
+    private async Task<AuthResponse> GenerateAuthResponseAsync(User user, CancellationToken cancellationToken)
     {
         var token = _jwtProvider.GenerateToken(user);
         var refreshToken = _jwtProvider.GenerateRefreshToken(user);
 
-        await _userRepository.AddRefreshTokenAsync(refreshToken);
+        await _userRepository.AddRefreshTokenAsync(refreshToken, cancellationToken);
 
         return new AuthResponse
         {

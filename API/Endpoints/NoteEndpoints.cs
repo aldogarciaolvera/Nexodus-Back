@@ -19,20 +19,20 @@ public static class NoteEndpoints
             .WithTags("Notes")
             .RequireAuthorization();
 
-        group.MapGet("/", async (INoteService noteService, ClaimsPrincipal user) =>
+        group.MapGet("/", async (int? page, int? pageSize, INoteService noteService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var notes = await noteService.GetAllNotesAsync(userId);
+            var notes = await noteService.GetAllNotesAsync(userId, page, pageSize, ct);
             return Results.Ok(notes);
         })
         .WithName("GetAllNotes")
-        .WithSummary("Obtiene todas las notas del usuario")
+        .WithSummary("Obtiene las notas del usuario con soporte opcional de paginación")
         .Produces<IEnumerable<NoteDto>>(StatusCodes.Status200OK);
 
-        group.MapGet("/{id:guid}", async (Guid id, INoteService noteService, ClaimsPrincipal user) =>
+        group.MapGet("/{id:guid}", async (Guid id, INoteService noteService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var note = await noteService.GetNoteByIdAsync(id, userId);
+            var note = await noteService.GetNoteByIdAsync(id, userId, ct);
             return Results.Ok(note);
         })
         .WithName("GetNoteById")
@@ -40,10 +40,10 @@ public static class NoteEndpoints
         .Produces<NoteDto>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPost("/", async (CreateNoteDto dto, INoteService noteService, ClaimsPrincipal user) =>
+        group.MapPost("/", async (CreateNoteDto dto, INoteService noteService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var note = await noteService.CreateNoteAsync(userId, dto);
+            var note = await noteService.CreateNoteAsync(userId, dto, ct);
             return Results.Created($"/api/notes/{note.Id}", note);
         })
         .AddEndpointFilter<ValidationFilter<CreateNoteDto>>()
@@ -52,10 +52,10 @@ public static class NoteEndpoints
         .Produces<NoteDto>(StatusCodes.Status201Created)
         .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
-        group.MapPatch("/{id:guid}", async (Guid id, UpdateNoteDto dto, INoteService noteService, ClaimsPrincipal user) =>
+        group.MapPatch("/{id:guid}", async (Guid id, UpdateNoteDto dto, INoteService noteService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var note = await noteService.UpdateNoteAsync(id, userId, dto);
+            var note = await noteService.UpdateNoteAsync(id, userId, dto, ct);
             return Results.Ok(note);
         })
         .AddEndpointFilter<ValidationFilter<UpdateNoteDto>>()
@@ -65,10 +65,10 @@ public static class NoteEndpoints
         .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapDelete("/{id:guid}", async (Guid id, INoteService noteService, ClaimsPrincipal user) =>
+        group.MapDelete("/{id:guid}", async (Guid id, INoteService noteService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            await noteService.DeleteNoteAsync(id, userId);
+            await noteService.DeleteNoteAsync(id, userId, ct);
             return Results.NoContent();
         })
         .WithName("DeleteNote")

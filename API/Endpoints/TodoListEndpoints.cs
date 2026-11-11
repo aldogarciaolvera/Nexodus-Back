@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -19,10 +20,10 @@ public static class TodoListEndpoints
             .WithTags("TodoList")
             .RequireAuthorization();
 
-        group.MapPost("/", async (CreateTodoListRequest request, ITodoListService todoListService, ClaimsPrincipal user) =>
+        group.MapPost("/", async (CreateTodoListRequest request, ITodoListService todoListService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var result = await todoListService.CreateAsync(userId, request);
+            var result = await todoListService.CreateAsync(userId, request, ct);
             return Results.Created($"/api/todos/{result.Id}", result);
         })
         .AddEndpointFilter<ValidationFilter<CreateTodoListRequest>>()
@@ -31,20 +32,20 @@ public static class TodoListEndpoints
         .Produces<TodoListDto>(StatusCodes.Status201Created)
         .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
-        group.MapGet("/", async (ITodoListService todoListService, ClaimsPrincipal user) =>
+        group.MapGet("/", async (ITodoListService todoListService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var result = await todoListService.GetAllByUserIdAsync(userId);
+            var result = await todoListService.GetAllByUserIdAsync(userId, ct);
             return Results.Ok(result);
         })
         .WithName("GetAllTodos")
         .WithSummary("Obtiene todas las tareas y hábitos del usuario")
         .Produces<IEnumerable<TodoListDto>>(StatusCodes.Status200OK);
 
-        group.MapGet("/{id:guid}", async (Guid id, ITodoListService todoListService, ClaimsPrincipal user) =>
+        group.MapGet("/{id:guid}", async (Guid id, ITodoListService todoListService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var result = await todoListService.GetByIdAsync(userId, id);
+            var result = await todoListService.GetByIdAsync(userId, id, ct);
             return Results.Ok(result);
         })
         .WithName("GetTodoById")
@@ -52,10 +53,10 @@ public static class TodoListEndpoints
         .Produces<TodoListDto>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPut("/{id:guid}", async (Guid id, UpdateTodoListRequest request, ITodoListService todoListService, ClaimsPrincipal user) =>
+        group.MapPut("/{id:guid}", async (Guid id, UpdateTodoListRequest request, ITodoListService todoListService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var result = await todoListService.UpdateAsync(userId, id, request);
+            var result = await todoListService.UpdateAsync(userId, id, request, ct);
             return Results.Ok(result);
         })
         .AddEndpointFilter<ValidationFilter<UpdateTodoListRequest>>()
@@ -65,10 +66,10 @@ public static class TodoListEndpoints
         .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapDelete("/{id:guid}", async (Guid id, ITodoListService todoListService, ClaimsPrincipal user) =>
+        group.MapDelete("/{id:guid}", async (Guid id, ITodoListService todoListService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            await todoListService.DeleteAsync(userId, id);
+            await todoListService.DeleteAsync(userId, id, ct);
             return Results.NoContent();
         })
         .WithName("DeleteTodo")
@@ -76,10 +77,10 @@ public static class TodoListEndpoints
         .Produces(StatusCodes.Status204NoContent)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPost("/{id:guid}/complete", async (Guid id, ITodoListService todoListService, ClaimsPrincipal user) =>
+        group.MapPost("/{id:guid}/complete", async (Guid id, ITodoListService todoListService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var result = await todoListService.MarkAsCompletedAsync(userId, id);
+            var result = await todoListService.MarkAsCompletedAsync(userId, id, ct);
             return Results.Ok(result);
         })
         .WithName("MarkTodoAsCompleted")
@@ -88,10 +89,10 @@ public static class TodoListEndpoints
         .ProducesProblem(StatusCodes.Status404NotFound)
         .ProducesProblem(StatusCodes.Status409Conflict);
 
-        group.MapPost("/{id:guid}/uncompleted", async (Guid id, ITodoListService todoListService, ClaimsPrincipal user) =>
+        group.MapPost("/{id:guid}/uncompleted", async (Guid id, ITodoListService todoListService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var result = await todoListService.MarkAsUncompletedAsync(userId, id);
+            var result = await todoListService.MarkAsUncompletedAsync(userId, id, ct);
             return Results.Ok(result);
         })
         .WithName("MarkTodoAsUncompleted")

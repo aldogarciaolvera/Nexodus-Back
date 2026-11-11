@@ -14,12 +14,24 @@ namespace Nexodus_Back.Application.Services;
 /// <summary>
 /// Provides personal finance management operations and financial summaries.
 /// </summary>
-public class FinanceService(IFinanceRepository financeRepository) : IFinanceService
+public class FinanceService(
+    IFinanceRepository financeRepository,
+    ICategoryRepository categoryRepository) : IFinanceService
 {
     private readonly IFinanceRepository _financeRepository = financeRepository ?? throw new ArgumentNullException(nameof(financeRepository));
+    private readonly ICategoryRepository _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
 
     public async Task<FinanceDto> CreateAsync(Guid userId, CreateFinanceRequest request, CancellationToken cancellationToken = default)
     {
+        if (request.CategoryId.HasValue)
+        {
+            var category = await _categoryRepository.GetByIdAsync(request.CategoryId.Value, cancellationToken);
+            if (category == null || category.UserId != userId)
+            {
+                throw new ValidationException("La categoría especificada no existe o no pertenece a tu cuenta.");
+            }
+        }
+
         var finance = new Finance
         {
             UserId = userId,
@@ -33,14 +45,14 @@ public class FinanceService(IFinanceRepository financeRepository) : IFinanceServ
             UpdatedAt = DateTime.UtcNow
         };
 
-        var createdFinance = await _financeRepository.AddAsync(finance);
+        var createdFinance = await _financeRepository.AddAsync(finance, cancellationToken);
 
         return MapToDto(createdFinance);
     }
 
     public async Task<FinanceDto> GetByIdAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
-        var finance = await _financeRepository.GetByIdAsync(id);
+        var finance = await _financeRepository.GetByIdAsync(id, cancellationToken);
 
         if (finance == null)
         {
@@ -55,15 +67,23 @@ public class FinanceService(IFinanceRepository financeRepository) : IFinanceServ
         return MapToDto(finance);
     }
 
-    public async Task<IEnumerable<FinanceDto>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<FinanceDto>> GetAllByUserIdAsync(Guid userId, int? page = null, int? pageSize = null, CancellationToken cancellationToken = default)
     {
-        var finances = await _financeRepository.GetAllByUserIdAsync(userId);
-        return finances.Select(MapToDto);
+        var finances = await _financeRepository.GetAllByUserIdAsync(userId, cancellationToken);
+        var query = finances.AsQueryable();
+
+        if (page.HasValue && page.Value > 0)
+        {
+            var limit = Math.Clamp(pageSize ?? 50, 1, 100);
+            query = query.Skip((page.Value - 1) * limit).Take(limit);
+        }
+
+        return query.Select(MapToDto);
     }
 
     public async Task<FinanceSummaryDto> GetSummaryAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var finances = await _financeRepository.GetAllByUserIdAsync(userId);
+        var finances = await _financeRepository.GetAllByUserIdAsync(userId, cancellationToken);
         
         var totalIncome = finances
             .Where(f => f.TransactionType.Equals("Ingreso", StringComparison.OrdinalIgnoreCase) || 
@@ -84,7 +104,7 @@ public class FinanceService(IFinanceRepository financeRepository) : IFinanceServ
 
     public async Task<FinanceDto> UpdateAsync(Guid userId, Guid id, UpdateFinanceRequest request, CancellationToken cancellationToken = default)
     {
-        var finance = await _financeRepository.GetByIdAsync(id);
+        var finance = await _financeRepository.GetByIdAsync(id, cancellationToken);
 
         if (finance == null)
         {
@@ -94,6 +114,15 @@ public class FinanceService(IFinanceRepository financeRepository) : IFinanceServ
         if (finance.UserId != userId)
         {
             throw new UnauthorizedException("No estás autorizado para modificar este registro.");
+        }
+
+        if (request.CategoryId.HasValue)
+        {
+            var category = await _categoryRepository.GetByIdAsync(request.CategoryId.Value, cancellationToken);
+            if (category == null || category.UserId != userId)
+            {
+                throw new ValidationException("La categoría especificada no existe o no pertenece a tu cuenta.");
+            }
         }
 
         finance.TransactionType = request.TransactionType;
@@ -107,14 +136,14 @@ public class FinanceService(IFinanceRepository financeRepository) : IFinanceServ
         }
         finance.UpdatedAt = DateTime.UtcNow;
 
-        await _financeRepository.UpdateAsync(finance);
+        await _financeRepository.UpdateAsync(finance, cancellationToken);
 
         return MapToDto(finance);
     }
 
     public async Task DeleteAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
-        var finance = await _financeRepository.GetByIdAsync(id);
+        var finance = await _financeRepository.GetByIdAsync(id, cancellationToken);
 
         if (finance == null)
         {
@@ -126,7 +155,7 @@ public class FinanceService(IFinanceRepository financeRepository) : IFinanceServ
             throw new UnauthorizedException("No estás autorizado para eliminar este registro.");
         }
 
-        await _financeRepository.DeleteAsync(finance);
+        await _financeRepository.DeleteAsync(finance, cancellationToken);
     }
 
     private static FinanceDto MapToDto(Finance finance)

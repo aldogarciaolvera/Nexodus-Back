@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Nexodus_Back.API.Extensions;
+using Nexodus_Back.API.Filters;
 using Nexodus_Back.Application.DTOs.Diet;
 using Nexodus_Back.Application.Interfaces;
 
@@ -37,6 +38,7 @@ public static class PantryEndpoints
             var item = await service.AddItemAsync(userId, dto, ct);
             return Results.Created($"/api/pantry/{item.Id}", item);
         })
+        .AddEndpointFilter<ValidationFilter<CreatePantryItemDto>>()
         .WithName("AddPantryItem")
         .WithSummary("Agrega un ingrediente a la despensa del usuario")
         .Produces<PantryItemDto>(StatusCodes.Status201Created)
@@ -60,10 +62,12 @@ public static class PantryEndpoints
             var updated = await service.UpdateItemAsync(id, userId, dto, ct);
             return Results.Ok(updated);
         })
+        .AddEndpointFilter<ValidationFilter<UpdatePantryItemDto>>()
         .WithName("UpdatePantryItem")
         .WithSummary("Actualiza los detalles o cantidad de un ingrediente en la despensa")
         .Produces<PantryItemDto>(StatusCodes.Status200OK)
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         // Eliminar ingrediente de la despensa
         group.MapDelete("/{id:guid}", async (Guid id, IPantryService service, ClaimsPrincipal user, CancellationToken ct) =>

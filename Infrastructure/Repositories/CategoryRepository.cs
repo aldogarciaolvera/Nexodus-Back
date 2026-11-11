@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Nexodus_Back.Core.Entities;
@@ -16,16 +17,16 @@ public class CategoryRepository(NexodusDbContext context) : ICategoryRepository
 {
     private readonly NexodusDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
 
-    public async Task<IEnumerable<Category>> GetByUserIdAsync(Guid userId)
+    public async Task<IEnumerable<Category>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _context.Categories
             .AsNoTracking()
             .Where(c => c.UserId == userId && (c.Type == null || c.Type == "Money"))
             .OrderBy(c => c.Name)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<IEnumerable<Category>> GetByTypeAsync(string type, System.Threading.CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Category>> GetByTypeAsync(string type, CancellationToken cancellationToken = default)
     {
         return await _context.Categories
             .AsNoTracking()
@@ -34,33 +35,33 @@ public class CategoryRepository(NexodusDbContext context) : ICategoryRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<Category?> GetByIdAsync(Guid id)
+    public async Task<Category?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _context.Categories.FindAsync(id);
+        return await _context.Categories.FindAsync([id], cancellationToken);
     }
 
-    public async Task<Category?> GetByNameAsync(Guid userId, string name)
+    public async Task<Category?> GetByNameAsync(Guid userId, string name, CancellationToken cancellationToken = default)
     {
         return await _context.Categories
-            .FirstOrDefaultAsync(c => c.UserId == userId && c.Name.ToLower() == name.ToLower());
+            .FirstOrDefaultAsync(c => c.UserId == userId && c.Name.ToLower() == name.ToLower(), cancellationToken);
     }
 
-    public async Task<Category> AddAsync(Category category)
+    public async Task<Category> AddAsync(Category category, CancellationToken cancellationToken = default)
     {
         _context.Categories.Add(category);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return category;
     }
 
-    public async Task UpdateAsync(Category category)
+    public async Task UpdateAsync(Category category, CancellationToken cancellationToken = default)
     {
         _context.Entry(category).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteAsync(Category category)
+    public async Task DeleteAsync(Category category, CancellationToken cancellationToken = default)
     {
         _context.Categories.Remove(category);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }

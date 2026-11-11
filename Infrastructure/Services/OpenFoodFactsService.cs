@@ -26,8 +26,14 @@ public class OpenFoodFactsService(
             return null;
 
         var cleanBarcode = barcode.Trim();
+        if (!System.Text.RegularExpressions.Regex.IsMatch(cleanBarcode, @"^[0-9A-Za-z-]{4,32}$"))
+        {
+            _logger.LogWarning("Código de barras con formato inválido o potencialmente malicioso descartado: '{Barcode}'", cleanBarcode);
+            return null;
+        }
+
         var client = _httpClientFactory.CreateClient("OpenFoodFacts");
-        var requestUrl = $"{_options.BaseUrl.TrimEnd('/')}/{cleanBarcode}.json";
+        var requestUrl = $"{_options.BaseUrl.TrimEnd('/')}/{Uri.EscapeDataString(cleanBarcode)}.json";
 
         try
         {

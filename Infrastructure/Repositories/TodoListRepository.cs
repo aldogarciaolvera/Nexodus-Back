@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Nexodus_Back.Core.Entities;
@@ -16,39 +17,39 @@ public class TodoListRepository(NexodusDbContext context) : ITodoListRepository
 {
     private readonly NexodusDbContext _context = context ?? throw new ArgumentNullException(nameof(context));
 
-    public async Task<TodoList> CreateAsync(TodoList todo)
+    public async Task<TodoList> CreateAsync(TodoList todo, CancellationToken cancellationToken = default)
     {
         _context.TodoList.Add(todo);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return todo;
     }
 
-    public async Task<IEnumerable<TodoList>> GetAllByUserIdAsync(Guid userId)
+    public async Task<IEnumerable<TodoList>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _context.TodoList
             .AsNoTracking()
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.CreatedAt)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<TodoList?> GetByIdAsync(Guid userId, Guid id)
+    public async Task<TodoList?> GetByIdAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.TodoList
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, cancellationToken);
     }
 
-    public async Task<TodoList> UpdateAsync(TodoList todo)
+    public async Task<TodoList> UpdateAsync(TodoList todo, CancellationToken cancellationToken = default)
     {
         todo.UpdatedAt = DateTime.UtcNow;
         _context.TodoList.Update(todo);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return todo;
     }
 
-    public async Task DeleteAsync(TodoList todo)
+    public async Task DeleteAsync(TodoList todo, CancellationToken cancellationToken = default)
     {
         _context.TodoList.Remove(todo);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }

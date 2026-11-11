@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Nexodus_Back.API.Extensions;
+using Nexodus_Back.API.Filters;
 using Nexodus_Back.Application.DTOs.Gamification;
 using Nexodus_Back.Application.Interfaces;
 
@@ -34,9 +35,11 @@ public static class GamificationEndpoints
             var result = await service.UpdateRestDaysAsync(userId, dto.RestDays, ct);
             return Results.Ok(result);
         })
+        .AddEndpointFilter<ValidationFilter<UpdateRestDaysDto>>()
         .WithName("UpdateRestDays")
         .WithSummary("Configura los días de descanso programado para proteger las rachas")
-        .Produces<GamificationStatusDto>(StatusCodes.Status200OK);
+        .Produces<GamificationStatusDto>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         group.MapPost("/streak/restore", async (IGamificationService service, ClaimsPrincipal user, CancellationToken ct) =>
         {

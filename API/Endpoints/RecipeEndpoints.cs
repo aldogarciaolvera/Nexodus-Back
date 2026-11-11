@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Nexodus_Back.API.Extensions;
+using Nexodus_Back.API.Filters;
 using Nexodus_Back.Application.DTOs.Diet;
 using Nexodus_Back.Application.Interfaces;
 
@@ -82,6 +83,7 @@ public static class RecipeEndpoints
             var recipe = await service.CreateAsync(userId, dto, ct);
             return Results.Created($"/api/recipes/{recipe.Id}", recipe);
         })
+        .AddEndpointFilter<ValidationFilter<CreateRecipeDto>>()
         .WithName("CreateRecipe")
         .WithSummary("Crea una receta propia del usuario o la publica en la comunidad")
         .Produces<RecipeDto>(StatusCodes.Status201Created)
@@ -94,10 +96,12 @@ public static class RecipeEndpoints
             var variant = await service.CreateVariantAsync(id, userId, dto, ct);
             return Results.Created($"/api/recipes/{variant.Id}", variant);
         })
+        .AddEndpointFilter<ValidationFilter<CreateRecipeDto>>()
         .WithName("CreateRecipeVariant")
         .WithSummary("Crea una variante personalizada de una receta comunitaria existente vinculada por ParentRecipeId")
         .Produces<RecipeDto>(StatusCodes.Status201Created)
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         // Registrar receta completa como plato en el diario de comidas (Opción A Híbrido Fitia)
         group.MapPost("/log", async (LogRecipeAsMealDto dto, IRecipeService service, ClaimsPrincipal user, CancellationToken ct) =>
@@ -106,10 +110,12 @@ public static class RecipeEndpoints
             var meal = await service.LogRecipeAsMealAsync(userId, dto, ct);
             return Results.Ok(meal);
         })
+        .AddEndpointFilter<ValidationFilter<LogRecipeAsMealDto>>()
         .WithName("LogRecipeAsMeal")
         .WithSummary("Registra una receta completa como comida en el diario, guardando cada ingrediente atómico para edición libre")
         .Produces<MealDto>(StatusCodes.Status200OK)
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         // Generar receta con IA adaptada a los macros restantes (Estilo Yuki Fitia)
         group.MapPost("/ai/match-macros", async (
@@ -122,6 +128,8 @@ public static class RecipeEndpoints
             var recipe = await aiService.GenerateRecipeForRemainingMacrosAsync(userId, dto, ct);
             return Results.Ok(recipe);
         })
+        .AddEndpointFilter<ValidationFilter<MatchMacrosRecipeRequestDto>>()
+        .RequireRateLimiting("AiPolicy")
         .WithName("GenerateRecipeForRemainingMacros")
         .WithSummary("Genera una receta personalizada mediante IA para cubrir con precisión los macros restantes del día")
         .Produces<RecipeDto>(StatusCodes.Status200OK)
@@ -138,6 +146,8 @@ public static class RecipeEndpoints
             var suggestions = await aiService.SuggestRecipesFromPantryAsync(userId, dto, ct);
             return Results.Ok(suggestions);
         })
+        .AddEndpointFilter<ValidationFilter<PantryCookRequestDto>>()
+        .RequireRateLimiting("AiPolicy")
         .WithName("SuggestRecipesFromPantry")
         .WithSummary("Sugiere 3 recetas con ingredientes de la despensa y marca faltantes para la lista de compras")
         .Produces<List<PantryCookSuggestionDto>>(StatusCodes.Status200OK)
@@ -150,10 +160,12 @@ public static class RecipeEndpoints
             var updated = await service.UpdateAsync(id, userId, dto, ct);
             return Results.Ok(updated);
         })
+        .AddEndpointFilter<ValidationFilter<UpdateRecipeDto>>()
         .WithName("UpdateRecipe")
         .WithSummary("Actualiza los ingredientes, pasos o metadatos de una receta propia")
         .Produces<RecipeDto>(StatusCodes.Status200OK)
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         // Eliminar receta propia
         group.MapDelete("/{id:guid}", async (Guid id, IRecipeService service, ClaimsPrincipal user, CancellationToken ct) =>

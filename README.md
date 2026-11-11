@@ -9,27 +9,34 @@ Backend API for Nexodus, a personal management application (Diet, Finance, TodoL
 *   **Entity Framework Core** con consultas optimizadas (`.AsNoTracking()` y carga diferida selectiva).
 *   **JWT & BCrypt** para autenticación y seguridad con `JwtProvider` y `PasswordHasher`.
 *   **AWSSDK.S3** con cliente Singleton administrado y soporte para MinIO / Cloudflare R2 / AWS S3.
-*   **FluentValidation** acoplado mediante Endpoint Filters (`ValidationFilter<T>`).
-*   **Scalar** y OpenAPI nativo de .NET 10 para exploración interactiva de la API.
+*   **FluentValidation** acoplado mediante Endpoint Filters (`ValidationFilter<T>`) con cobertura del 100% de los endpoints de mutación.
+*   **Scalar** y OpenAPI nativo de .NET 10 para exploración interactiva de la API con documentación XML de interfaces.
+*   **Programación Asíncrona Total:** Propagación de `CancellationToken` a lo largo de toda la cadena (Endpoints -> Servicios -> Repositorios -> EF Core).
 
 ## Arquitectura
 
 El proyecto sigue estrictamente los principios de **Clean Architecture**:
-*   `Core/`: Entidades de dominio, Excepciones del catálogo (`ValidationException`, `NotFoundException`, `ConflictException`, `UnauthorizedException`) e Interfaces de repositorio. Cero dependencias externas.
-*   `Application/`: DTOs organizados por módulo, Casos de Uso (Servicios con interfaces e inyección de dependencias `I...Service`) y Validadores FluentValidation.
-*   `Infrastructure/`: Repositorios EF Core, Contexto de Base de Datos (`NexodusDbContext`), Servicios de almacenamiento (`S3StorageService`), Opciones de configuración fuertemente tipadas (`JwtOptions`, `S3Options`) y Seguridad.
+*   `Core/`: Entidades de dominio, Excepciones controladas del catálogo (`ValidationException`, `NotFoundException`, `ConflictException`, `UnauthorizedException`) e Interfaces de repositorio con soporte de `CancellationToken`. Cero dependencias externas.
+*   `Application/`: DTOs organizados por módulo, Casos de Uso (Servicios con interfaces e inyección de dependencias `I...Service`) y Validadores FluentValidation para cada payload.
+*   `Infrastructure/`: Repositorios EF Core, Contexto de Base de Datos (`NexodusDbContext`), Servicios de almacenamiento (`S3StorageService`), Opciones de configuración fuertemente tipadas (`JwtOptions`, `S3Options`), Servicios de IA y Seguridad.
 *   `API/`: Minimal APIs delgadas con metadatos OpenAPI (`.WithName()`, `.WithSummary()`, `.Produces<T>()`), Filtros de endpoint (`ValidationFilter<T>`), Extensiones de `ClaimsPrincipal` y Middleware de Excepciones Globales (`GlobalExceptionHandler`).
 
 ## Características Implementadas
 
 *   **Identificadores UUID:** Todas las entidades (Usuarios, Finanzas, Categorías, Rutinas, Ejercicios, etc.) utilizan `Guid` como identificadores únicos (`uuid` en Postgres).
+*   **Propagación de Cancelación (CancellationToken):** Todos los endpoints y repositorios aceptan y reenvían `CancellationToken`, abortando inmediatamente las consultas a la base de datos si el cliente cancela o desconecta la conexión.
 *   **Autenticación y Seguridad:** 
-    *   Registro y Login con validación automática.
+    *   Registro y Login con validación automática y contraseñas robustas.
     *   Generación de JWT y Refresh Tokens criptográficamente seguros.
-    *   Hasheo de contraseñas utilizando BCrypt.
-    *   Opciones fuertemente tipadas validadas (`JwtOptions`).
-*   **Manejo Global de Excepciones y ProblemDetails:** Middleware interceptor (`GlobalExceptionHandler`) que captura excepciones controladas de dominio y errores imprevistos, transformándolos en respuestas estandarizadas **RFC 7807 / RFC 9457 ProblemDetails** e integrando logging estructurado con `ILogger`.
-*   **Validación Transparente:** Integración de `ValidationFilter<T>` como filtro de Minimal API para ejecutar validaciones antes de invocar la lógica de negocio.
+    *   Cierre de sesión y revocación explícita de tokens (`POST /api/auth/logout`).
+    *   Protección contra ataques de fuerza bruta y abuso mediante **Rate Limiting** nativo de ASP.NET Core (`AuthPolicy` y `AiPolicy`).
+    *   Políticas **CORS** seguras con lista blanca de orígenes permitidos configurable (`ALLOWED_ORIGINS`).
+    *   Cabeceras de endurecimiento HTTP automáticas (`HSTS`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`).
+    *   Protección contra inyección de prompts en IA mediante delimitación semántica estricta (`<user_data>`, `<user_preferences>`).
+    *   Hasheo de contraseñas utilizando BCrypt con sal automática.
+    *   Opciones fuertemente tipadas validadas (`JwtOptions`, `S3Options`).
+*   **Manejo Global de Excepciones y ProblemDetails:** Middleware interceptor (`GlobalExceptionHandler`) que captura excepciones controladas de dominio y errores imprevistos, transformándolos en respuestas estandarizadas **RFC 7807 / RFC 9457 ProblemDetails** e integrando logging estructurado con `ILogger`. Nunca expone excepciones genéricas ni trazas de pila al cliente.
+*   **Validación Transparente y Uniforme:** Integración de `ValidationFilter<T>` en cada endpoint POST/PUT/PATCH para ejecutar validaciones FluentValidation antes de invocar la lógica de negocio.
 *   **Módulo de Finanzas (CRUD Completo):** Endpoints para transacciones y balance mensual. Compatible con tipos bilingües (`Income`/`Expense` e `Ingreso`/`Gasto`; `Tarjeta`/`Card` y `Efectivo`/`Cash`).
 *   **Módulo de Categorías (CRUD):** Categorías personalizadas por usuario para transacciones financieras.
 *   **Módulo de Tareas y Hábitos:** Gestión de tareas puntuales y hábitos recurrentes con seguimiento de rachas (`CurrentStreak`, `HighestStreak`).
@@ -76,6 +83,12 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```json
     {
       "token": "string (JWT expirado)",
+      "refreshToken": "string"
+    }
+    ```
+*   `POST /api/auth/logout` - Revoca el Refresh Token y cierra la sesión del usuario.
+    ```json
+    {
       "refreshToken": "string"
     }
     ```
@@ -278,6 +291,31 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     *   `GET /api/diet/fasting/status` - Estado en vivo del ayuno (horas transcurridas, restantes, % de progreso y hora estimada de finalización).
     *   `POST /api/diet/fasting/start` - Inicia una sesión de ayuno con protocolo (ej. `16:8`) y horas objetivo.
     *   `POST /api/diet/fasting/stop` - Concluye la sesión de ayuno activa y abre la ventana de ingesta.
+
+**Recetas y Chef IA (`/api/recipes`)** *(Requieren Autenticación JWT)*
+*   `GET /api/recipes` - Busca recetas con filtros por `query`, `mealType`, `dietType`, recetas comunitarias o propias, con paginación.
+*   `GET /api/recipes/{id}` - Obtiene el detalle completo de una receta incluyendo ingredientes y pasos.
+*   `GET /api/recipes/{id}/variants` - Obtiene las variantes derivadas de una receta base.
+*   `POST /api/recipes` - Crea una receta propia o comunitaria con validación estricta de ingredientes y pasos.
+*   `POST /api/recipes/{id}/variants` - Crea una variante derivada vinculada a la receta original.
+*   `POST /api/recipes/log` - Registra una receta completa en el diario de comidas, desglosando cada ingrediente atómico para edición libre.
+*   `POST /api/recipes/ai/match-macros` - Genera mediante IA una receta equilibrada para cubrir exactamente los macros restantes del día.
+*   `POST /api/recipes/ai/pantry-cook` - Sugiere recetas optimizadas utilizando los ingredientes disponibles en la despensa del usuario.
+*   `PUT /api/recipes/{id}` - Actualiza una receta propia.
+*   `DELETE /api/recipes/{id}` - Elimina una receta propia.
+
+**Despensa del Usuario (`/api/pantry`)** *(Requieren Autenticación JWT)*
+*   `GET /api/pantry` - Lista los ingredientes disponibles en la despensa con categoría y fecha de expiración.
+*   `POST /api/pantry` - Añade un nuevo ingrediente a la despensa.
+*   `POST /api/pantry/bulk` - Añade múltiples ingredientes en lote a la despensa.
+*   `PUT /api/pantry/{id}` - Actualiza la cantidad, unidad o fecha de expiración de un ingrediente.
+*   `DELETE /api/pantry/{id}` - Elimina un ingrediente de la despensa.
+
+**Gamificación y Cyber Vault (`/api/gamification`)** *(Requieren Autenticación JWT)*
+*   `GET /api/gamification/status` - Consulta el rango Obsidian, NXP acumulado, racha actual, días de descanso y saldo de Cyphers.
+*   `PUT /api/gamification/rest-days` - Configura los días de descanso programado para proteger la racha.
+*   `POST /api/gamification/streak/restore` - Restaura una racha perdida utilizando Cyphers o un Escudo de Racha disponible.
+*   `POST /api/gamification/vault/buy-freeze` - Adquiere un Escudo de Racha adicional en el Cyber Vault usando Cyphers.
 
 ---
 

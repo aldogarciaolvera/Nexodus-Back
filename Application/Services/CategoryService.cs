@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Nexodus_Back.Application.DTOs.Category;
 using Nexodus_Back.Application.Interfaces;
@@ -17,9 +18,9 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
 {
     private readonly ICategoryRepository _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
 
-    public async Task<CategoryDto> CreateAsync(Guid userId, CreateCategoryRequest request)
+    public async Task<CategoryDto> CreateAsync(Guid userId, CreateCategoryRequest request, CancellationToken cancellationToken = default)
     {
-        var existingCategory = await _categoryRepository.GetByNameAsync(userId, request.Name);
+        var existingCategory = await _categoryRepository.GetByNameAsync(userId, request.Name, cancellationToken);
         if (existingCategory != null)
         {
             throw new ConflictException($"La categoría con el nombre '{request.Name}' ya existe.");
@@ -36,14 +37,14 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
             UpdatedAt = DateTime.UtcNow
         };
 
-        var createdCategory = await _categoryRepository.AddAsync(category);
+        var createdCategory = await _categoryRepository.AddAsync(category, cancellationToken);
 
         return MapToDto(createdCategory);
     }
 
-    public async Task<CategoryDto> GetByIdAsync(Guid userId, Guid id)
+    public async Task<CategoryDto> GetByIdAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
-        var category = await _categoryRepository.GetByIdAsync(id);
+        var category = await _categoryRepository.GetByIdAsync(id, cancellationToken);
 
         if (category == null)
         {
@@ -58,15 +59,15 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
         return MapToDto(category);
     }
 
-    public async Task<IEnumerable<CategoryDto>> GetAllByUserIdAsync(Guid userId)
+    public async Task<IEnumerable<CategoryDto>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var categories = await _categoryRepository.GetByUserIdAsync(userId);
+        var categories = await _categoryRepository.GetByUserIdAsync(userId, cancellationToken);
         return categories.Select(MapToDto);
     }
 
-    public async Task<CategoryDto> UpdateAsync(Guid userId, Guid id, UpdateCategoryRequest request)
+    public async Task<CategoryDto> UpdateAsync(Guid userId, Guid id, UpdateCategoryRequest request, CancellationToken cancellationToken = default)
     {
-        var category = await _categoryRepository.GetByIdAsync(id);
+        var category = await _categoryRepository.GetByIdAsync(id, cancellationToken);
 
         if (category == null)
         {
@@ -80,7 +81,7 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
 
         if (category.Name.ToLower() != request.Name.ToLower())
         {
-            var existingCategory = await _categoryRepository.GetByNameAsync(userId, request.Name);
+            var existingCategory = await _categoryRepository.GetByNameAsync(userId, request.Name, cancellationToken);
             if (existingCategory != null)
             {
                 throw new ConflictException($"La categoría con el nombre '{request.Name}' ya existe.");
@@ -92,14 +93,14 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
         category.MonthlyLimit = request.MonthlyLimit;
         category.UpdatedAt = DateTime.UtcNow;
 
-        await _categoryRepository.UpdateAsync(category);
+        await _categoryRepository.UpdateAsync(category, cancellationToken);
 
         return MapToDto(category);
     }
 
-    public async Task DeleteAsync(Guid userId, Guid id)
+    public async Task DeleteAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
-        var category = await _categoryRepository.GetByIdAsync(id);
+        var category = await _categoryRepository.GetByIdAsync(id, cancellationToken);
 
         if (category == null)
         {
@@ -111,7 +112,7 @@ public class CategoryService(ICategoryRepository categoryRepository) : ICategory
             throw new UnauthorizedException("No estás autorizado para eliminar este registro.");
         }
 
-        await _categoryRepository.DeleteAsync(category);
+        await _categoryRepository.DeleteAsync(category, cancellationToken);
     }
 
     private static CategoryDto MapToDto(Category category)

@@ -139,7 +139,7 @@ public static class DietEndpoints
         .WithSummary("Busca alimentos en el catálogo por nombre o marca con soporte de paginación")
         .Produces<FoodSearchResponseDto>(StatusCodes.Status200OK);
 
-        group.MapGet("/foods/barcode/{barcode}", async (string barcode, IDietService service, ClaimsPrincipal user, CancellationToken ct) =>
+        group.MapGet("/foods/barcode/{barcode:regex(^[0-9A-Za-z-]{{4,32}}$)}", async (string barcode, IDietService service, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
             var food = await service.GetFoodByBarcodeAsync(barcode, userId, ct);
@@ -259,6 +259,7 @@ public static class DietEndpoints
             var result = await visionService.AnalyzeMealImageAsync(dto.Base64Image, dto.MimeType, dto.AdditionalContext, dto.Hint, ct);
             return Results.Ok(result);
         })
+        .RequireRateLimiting("AiPolicy")
         .AddEndpointFilter<ValidationFilter<AnalyzeFoodImageRequestDto>>()
         .WithName("AnalyzeMealLens")
         .WithSummary("Analiza visualmente una fotografía de comida mediante Google Gemini Vision para estimar platillos, porciones, calorías y macros")
