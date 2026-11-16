@@ -20,13 +20,15 @@ public class WorkoutSessionService(
     IRoutineRepository routineRepository,
     IExerciseRepository exerciseRepository,
     IUserRepository userRepository,
-    IGamificationService gamificationService) : IWorkoutSessionService
+    IGamificationService gamificationService,
+    IHabitService habitService) : IWorkoutSessionService
 {
     private readonly IWorkoutSessionRepository _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
     private readonly IRoutineRepository _routineRepository = routineRepository ?? throw new ArgumentNullException(nameof(routineRepository));
     private readonly IExerciseRepository _exerciseRepository = exerciseRepository ?? throw new ArgumentNullException(nameof(exerciseRepository));
     private readonly IUserRepository _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
     private readonly IGamificationService _gamificationService = gamificationService ?? throw new ArgumentNullException(nameof(gamificationService));
+    private readonly IHabitService _habitService = habitService ?? throw new ArgumentNullException(nameof(habitService));
 
     public async Task<WorkoutSessionDto> StartSessionAsync(StartWorkoutSessionDto dto, Guid userId, CancellationToken cancellationToken = default)
     {
@@ -266,6 +268,16 @@ public class WorkoutSessionService(
             bonusNxp: (int)(session.TotalVolumeKg / 100.0),
             cancellationToken: cancellationToken
         );
+
+        // Sinergia automática con hábitos vinculados a WorkoutSession
+        try
+        {
+            await _habitService.HandleAutoCompleteTriggerAsync(userId, "WorkoutSession", 1.0, cancellationToken);
+        }
+        catch
+        {
+            // Fail-safe: No interrumpir la finalización de la sesión si el cálculo de hábitos falla
+        }
 
         return MapToDto(session);
     }

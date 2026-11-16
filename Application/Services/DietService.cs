@@ -26,7 +26,8 @@ public class DietService(
     IWorkoutSessionRepository sessionRepo,
     ICategoryRepository categoryRepo,
     IRoutineRepository routineRepo,
-    IUserGamificationRepository gamificationRepo) : IDietService
+    IUserGamificationRepository gamificationRepo,
+    IHabitService habitService) : IDietService
 {
     private readonly IDietTargetRepository _dietTargetRepo = dietTargetRepo ?? throw new ArgumentNullException(nameof(dietTargetRepo));
     private readonly IMealRepository _mealRepo = mealRepo ?? throw new ArgumentNullException(nameof(mealRepo));
@@ -39,6 +40,7 @@ public class DietService(
     private readonly ICategoryRepository _categoryRepo = categoryRepo ?? throw new ArgumentNullException(nameof(categoryRepo));
     private readonly IRoutineRepository _routineRepo = routineRepo ?? throw new ArgumentNullException(nameof(routineRepo));
     private readonly IUserGamificationRepository _gamificationRepo = gamificationRepo ?? throw new ArgumentNullException(nameof(gamificationRepo));
+    private readonly IHabitService _habitService = habitService ?? throw new ArgumentNullException(nameof(habitService));
 
     #region Targets & Calculations
 
@@ -646,6 +648,15 @@ public class DietService(
         var targetMl = target.WaterTargetMl > 0 ? target.WaterTargetMl : 2500;
         var percentage = Math.Round((log.ConsumedMl / targetMl) * 100, 1);
 
+        try
+        {
+            await _habitService.HandleAutoCompleteTriggerAsync(userId, "WaterLog", dto.AmountMl / 1000.0, cancellationToken);
+        }
+        catch
+        {
+            // Fail-safe
+        }
+
         return new WaterLogDto
         {
             Date = dto.Date,
@@ -662,6 +673,15 @@ public class DietService(
 
         var targetMl = target.WaterTargetMl > 0 ? target.WaterTargetMl : 2500;
         var percentage = Math.Round((log.ConsumedMl / targetMl) * 100, 1);
+
+        try
+        {
+            await _habitService.HandleAutoCompleteTriggerAsync(userId, "WaterLog", dto.TotalMl / 1000.0, cancellationToken);
+        }
+        catch
+        {
+            // Fail-safe
+        }
 
         return new WaterLogDto
         {

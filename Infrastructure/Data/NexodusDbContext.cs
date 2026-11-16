@@ -35,6 +35,9 @@ public class NexodusDbContext : DbContext
     public DbSet<RecipeIngredient> RecipeIngredients { get; set; } = null!;
     public DbSet<RecipeStep> RecipeSteps { get; set; } = null!;
     public DbSet<PantryItem> PantryItems { get; set; } = null!;
+    public DbSet<Habit> Habits { get; set; } = null!;
+    public DbSet<HabitCompletion> HabitCompletions { get; set; } = null!;
+    public DbSet<HabitReminder> HabitReminders { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -242,6 +245,38 @@ public class NexodusDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(pi => pi.FoodId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Habit>(entity =>
+        {
+            entity.HasIndex(h => new { h.UserId, h.IsArchived });
+            entity.HasIndex(h => h.AutoCompleteSource);
+
+            entity.HasOne(h => h.User)
+                .WithMany()
+                .HasForeignKey(h => h.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(h => h.Completions)
+                .WithOne(c => c.Habit)
+                .HasForeignKey(c => c.HabitId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(h => h.Reminders)
+                .WithOne(r => r.Habit)
+                .HasForeignKey(r => r.HabitId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<HabitCompletion>(entity =>
+        {
+            entity.HasIndex(c => new { c.HabitId, c.Date }).IsUnique();
+            entity.HasIndex(c => new { c.UserId, c.Date });
+        });
+
+        modelBuilder.Entity<HabitReminder>(entity =>
+        {
+            entity.HasIndex(r => r.HabitId);
         });
     }
 }

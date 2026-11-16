@@ -134,6 +134,7 @@ builder.Services.AddScoped<IFastingRepository, FastingRepository>();
 builder.Services.AddScoped<IUserGamificationRepository, UserGamificationRepository>();
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IPantryRepository, PantryRepository>();
+builder.Services.AddScoped<IHabitRepository, HabitRepository>();
 builder.Services.AddScoped<IStorageService, S3StorageService>();
 
 // Application Services
@@ -154,6 +155,7 @@ builder.Services.AddScoped<IPantryService, PantryService>();
 builder.Services.AddScoped<IRecipeAiService, RecipeAiService>();
 builder.Services.AddScoped<IOpenFoodFactsService, OpenFoodFactsService>();
 builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
+builder.Services.AddScoped<IHabitService, HabitService>();
 
 // Configure CORS with explicit allowed origins (SEC-01)
 var configuredOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
@@ -257,6 +259,7 @@ app.MapDietEndpoints();
 app.MapRecipeEndpoints();
 app.MapPantryEndpoints();
 app.MapGamificationEndpoints();
+app.MapHabitEndpoints();
 
 // Seed initial data
 using (var scope = app.Services.CreateScope())
