@@ -66,7 +66,6 @@ public class WorkoutSessionService(
         // Si se inició desde una rutina, precargamos los ejercicios y series planificadas
         if (routine?.RoutineExercises != null && routine.RoutineExercises.Count != 0)
         {
-            int globalOrder = 1;
             foreach (var re in routine.RoutineExercises)
             {
                 for (int s = 1; s <= re.Sets; s++)
@@ -76,7 +75,7 @@ public class WorkoutSessionService(
                         Id = Guid.NewGuid(),
                         WorkoutSessionId = session.Id,
                         ExerciseId = re.ExerciseId,
-                        SetOrder = globalOrder++,
+                        SetOrder = s,
                         Type = SetType.Normal,
                         WeightKg = re.Weight,
                         Reps = re.Reps,
