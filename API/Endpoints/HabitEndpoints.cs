@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Nexodus_Back.API.Extensions;
+using Nexodus_Back.API.Filters;
 using Nexodus_Back.Application.DTOs.Habit;
 using Nexodus_Back.Application.Interfaces;
 
@@ -25,10 +26,11 @@ public static class HabitEndpoints
             var result = await habitService.CreateHabitAsync(userId, dto, ct);
             return Results.Created($"/api/habits/{result.Id}", result);
         })
+        .AddEndpointFilter<ValidationFilter<CreateHabitDto>>()
         .WithName("CreateHabit")
         .WithSummary("Crea un nuevo hábito (Build o Quit, con tipo de registro y programación)")
         .Produces<HabitDto>(StatusCodes.Status201Created)
-        .ProducesProblem(StatusCodes.Status400BadRequest);
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         group.MapGet("/", async (bool? includeArchived, int? recentDays, IHabitService habitService, ClaimsPrincipal user, CancellationToken ct) =>
         {
@@ -57,9 +59,11 @@ public static class HabitEndpoints
             var result = await habitService.UpdateHabitAsync(userId, id, dto, ct);
             return Results.Ok(result);
         })
+        .AddEndpointFilter<ValidationFilter<UpdateHabitDto>>()
         .WithName("UpdateHabit")
         .WithSummary("Actualiza la configuración o estado de un hábito")
         .Produces<HabitDto>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapDelete("/{id:guid}", async (Guid id, IHabitService habitService, ClaimsPrincipal user, CancellationToken ct) =>
@@ -79,9 +83,11 @@ public static class HabitEndpoints
             var result = await habitService.CheckInAsync(userId, id, dto, ct);
             return Results.Ok(result);
         })
+        .AddEndpointFilter<ValidationFilter<HabitCheckInDto>>()
         .WithName("CheckInHabit")
         .WithSummary("Realiza un registro táctil rápido (+1, cantidad exacta, o toggle de cumplimiento/desliz)")
         .Produces<HabitDto>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/{id:guid}/history", async (Guid id, int? days, IHabitService habitService, ClaimsPrincipal user, CancellationToken ct) =>
@@ -112,8 +118,10 @@ public static class HabitEndpoints
             await habitService.ReorderHabitsAsync(userId, dto, ct);
             return Results.NoContent();
         })
+        .AddEndpointFilter<ValidationFilter<ReorderHabitsDto>>()
         .WithName("ReorderHabits")
         .WithSummary("Reordena los hábitos del usuario en la pantalla principal")
-        .Produces(StatusCodes.Status204NoContent);
+        .Produces(StatusCodes.Status204NoContent)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
     }
 }

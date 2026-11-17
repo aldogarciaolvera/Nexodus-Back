@@ -40,6 +40,14 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   **Módulo de Finanzas (CRUD Completo):** Endpoints para transacciones y balance mensual. Compatible con tipos bilingües (`Income`/`Expense` e `Ingreso`/`Gasto`; `Tarjeta`/`Card` y `Efectivo`/`Cash`).
 *   **Módulo de Categorías (CRUD):** Categorías personalizadas por usuario para transacciones financieras.
 *   **Módulo de Tareas y Hábitos:** Gestión de tareas puntuales y hábitos recurrentes con seguimiento de rachas (`CurrentStreak`, `HighestStreak`).
+*   **Módulo Avanzado de Seguimiento de Hábitos y Heatmaps (`/api/habits`):**
+    *   Diseño y seguimiento de hábitos positivos (`Build`) y negativos a erradicar (`Quit`).
+    *   Múltiples tipos de registro: Binario (`YesNo`), Numérico (`Numeric`) y Temporizador (`Timer`).
+    *   Flexibilidad de frecuencias: Diaria (`Daily`), días específicos (`SpecificDays`), veces por período (`TimesPerPeriod`) o intervalos personalizados (`RepeatInterval`).
+    *   Sincronización y completado automático desde módulos del sistema (`Nexodus.Water`, `Nexodus.Gym`, `Nexodus.Diet`).
+    *   Visualización Heatmap anual (365 días), cuadrícula reciente de azulejos (60-90 días) y tendencias de consistencia semanales.
+    *   Recordatorios configurables por hora y día de semana.
+    *   Acciones táctiles rápidas (+1, valor exacto o toggle) y reordenamiento de tarjetas.
 *   **Módulo de Notas y Checklist:** Diario personal y notas con soporte para listas de verificación dinámicas.
 *   **Módulo de Ejercicios y Rutinas:** Catálogo paginado de más de 1,300 ejercicios con generación concurrente y optimizada de URLs pre-firmadas en S3, diseño de rutinas personalizadas y bitácora de entrenamientos.
 *   **Módulo Avanzado de Sesiones de Entrenamiento (Gym / Workout Sessions):** 
@@ -164,6 +172,45 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   `POST /api/todos/{id}/complete` - Marca una tarea o hábito como completado hoy (incrementa la racha).
 *   `POST /api/todos/{id}/uncompleted` - Desmarca una tarea o hábito completado hoy (restaura la racha anterior).
 *   `DELETE /api/todos/{id}` - Elimina la tarea o hábito.
+
+**Hábitos Avanzados y Heatmaps (`/api/habits`)** *(Requieren Autenticación JWT)*
+*   `GET /api/habits?includeArchived=false&recentDays=60` - Obtiene los hábitos del usuario con su cuadrícula de azulejos reciente y estado del día.
+*   `GET /api/habits/{id}?recentDays=60` - Obtiene el detalle de un hábito específico.
+*   `POST /api/habits` - Crea un hábito con meta, frecuencia, recordatorios y fuente de auto-completado.
+    ```json
+    {
+      "name": "Beber 2.5L de Agua",
+      "description": "Mantenerse hidratado durante el día laboral",
+      "icon": "water_drop",
+      "color": "#00E5FF",
+      "category": "Health",
+      "habitType": "Build", // "Build" o "Quit"
+      "trackingType": "Numeric", // "YesNo", "Numeric", "Timer"
+      "targetValue": 2500,
+      "targetUnit": "ml",
+      "onTapAction": "ToggleOrAddOne",
+      "frequencyType": "Daily", // "Daily", "SpecificDays", "TimesPerPeriod", "RepeatInterval"
+      "streakUnit": "Days",
+      "autoCompleteSource": "Nexodus.Water",
+      "reminders": [
+        { "time": "09:00", "daysOfWeek": "Monday,Tuesday,Wednesday,Thursday,Friday", "isEnabled": true }
+      ]
+    }
+    ```
+*   `PUT /api/habits/{id}` - Actualiza la configuración, colores o metas de un hábito.
+*   `POST /api/habits/{id}/check-in` - Registro táctil rápido (+1, cantidad exacta o toggle).
+    ```json
+    {
+      "date": "2026-11-16",
+      "action": "AddAmount",
+      "amount": 500,
+      "note": "Botella de agua después de entrenar"
+    }
+    ```
+*   `GET /api/habits/{id}/history?days=90` - Historial cronológico de azulejos para renderizar la cuadrícula interactiva.
+*   `GET /api/habits/{id}/stats` - Estadísticas avanzadas, racha actual, mejor racha, tendencias semanales y mapa de 365 días.
+*   `POST /api/habits/reorder` - Reordena los hábitos del usuario en la pantalla principal.
+*   `DELETE /api/habits/{id}` - Elimina permanentemente un hábito y su historial.
 
 **Notas y Diario (`/api/notes`)** *(Requieren Autenticación JWT)*
 *   `GET /api/notes/` - Obtiene todas las notas del usuario.
