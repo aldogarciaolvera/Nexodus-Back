@@ -1,3 +1,16 @@
+## [0.1.3] - 2026-11-25
+
+### Features
+
+- Mejoras Radicales
+- Documentacion, habitos
+- implement habit tracker backend with heatmap history, quit/build modes, and gym/diet auto-completion
+
+### Bug Fixes
+
+- Series corregidos
+- Mejoras de modelo IA y guardado automatico de alimentos y Queries
+
 ## [0.1.2] - 2026-11-11
 
 ### Features
