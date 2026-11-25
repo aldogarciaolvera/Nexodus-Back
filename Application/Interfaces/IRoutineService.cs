@@ -35,4 +35,14 @@ public interface IRoutineService
     /// Deletes a workout routine.
     /// </summary>
     Task DeleteRoutineAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves curated read-only stretching routine templates grounded in real DB stretching exercises.
+    /// </summary>
+    Task<List<RoutineDto>> GetStretchingTemplatesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Clones a read-only stretching template into an editable personal routine for the user.
+    /// </summary>
+    Task<RoutineDto> CloneStretchingTemplateAsync(string templateKey, Guid userId, CancellationToken cancellationToken = default);
 }

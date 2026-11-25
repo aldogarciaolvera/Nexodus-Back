@@ -22,6 +22,91 @@ namespace Nexodus_Back.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.CardioSegment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CardioSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SegmentOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CardioSessionId");
+
+                    b.ToTable("CardioSegments");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.CardioSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActivityType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double?>("DistanceKm")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTimeOffset?>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("EstimatedCalories")
+                        .HasColumnType("double precision");
+
+                    b.Property<bool>("IsAiGenerated")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TotalDurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TrackingMode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "StartTime");
+
+                    b.ToTable("CardioSessions");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -144,6 +229,20 @@ namespace Nexodus_Back.Migrations
 
                     b.Property<double>("FatGrams")
                         .HasColumnType("double precision");
+
+                    b.Property<decimal?>("FoodBudgetAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid?>("FoodBudgetCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FoodBudgetCurrency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("FoodBudgetPeriod")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsCalorieCyclingEnabled")
                         .HasColumnType("boolean");
@@ -913,6 +1012,12 @@ namespace Nexodus_Back.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("CardioMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CardioType")
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -922,9 +1027,34 @@ namespace Nexodus_Back.Migrations
                     b.Property<string>("DifficultyLevel")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IncludeCardio")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsAiGenerated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsTemplate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Purpose")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RoutineType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Strength");
 
                     b.Property<int?>("TargetDay")
                         .HasColumnType("integer");
@@ -934,6 +1064,12 @@ namespace Nexodus_Back.Migrations
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("WarmupExercisesJson")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("WarmupMinutes")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -1337,6 +1473,17 @@ namespace Nexodus_Back.Migrations
                     b.ToTable("WorkoutSets");
                 });
 
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.CardioSegment", b =>
+                {
+                    b.HasOne("Nexodus_Back.Core.Entities.CardioSession", "CardioSession")
+                        .WithMany("Segments")
+                        .HasForeignKey("CardioSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CardioSession");
+                });
+
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Category", b =>
                 {
                     b.HasOne("Nexodus_Back.Core.Entities.User", "User")
@@ -1678,6 +1825,11 @@ namespace Nexodus_Back.Migrations
                     b.Navigation("Exercise");
 
                     b.Navigation("WorkoutSession");
+                });
+
+            modelBuilder.Entity("Nexodus_Back.Core.Entities.CardioSession", b =>
+                {
+                    b.Navigation("Segments");
                 });
 
             modelBuilder.Entity("Nexodus_Back.Core.Entities.Category", b =>

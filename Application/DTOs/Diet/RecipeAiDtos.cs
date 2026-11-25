@@ -12,6 +12,8 @@ public class MatchMacrosRecipeRequestDto
     public string DietType { get; set; } = "HighProtein"; // Standard, HighProtein, Keto, Vegan, LowCarb
     public string? Preferences { get; set; } // e.g. "sin lácteos", "con pollo", "preparación rápida"
     public int MaxPrepTimeMinutes { get; set; } = 30;
+    public decimal? MaxBudgetPerMeal { get; set; }
+    public string? Currency { get; set; } = "MXN";
 }
 
 public class PantryCookRequestDto

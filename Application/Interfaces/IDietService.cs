@@ -27,6 +27,11 @@ public interface IDietService
     /// </summary>
     Task<CalculatedTargetResponseDto> CalculateTargetAsync(CalculateTargetRequestDto request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Retrieves food budget summary synchronized with the user's Finance expenses for the chosen period.
+    /// </summary>
+    Task<FoodBudgetSummaryDto> GetFoodBudgetSummaryAsync(Guid userId, CancellationToken cancellationToken = default);
+
     // Meals & Daily Summary
     /// <summary>
     /// Retrieves daily nutritional intake and remaining targets for the given date.

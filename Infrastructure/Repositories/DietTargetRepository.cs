@@ -45,6 +45,13 @@ public class DietTargetRepository(NexodusDbContext context) : IDietTargetReposit
         existing.FastingProtocol = target.FastingProtocol;
         existing.EatingWindowStart = target.EatingWindowStart;
         existing.EatingWindowEnd = target.EatingWindowEnd;
+        existing.IsCalorieCyclingEnabled = target.IsCalorieCyclingEnabled;
+        existing.WorkoutDayCarbMultiplier = target.WorkoutDayCarbMultiplier;
+        existing.RestDayCarbMultiplier = target.RestDayCarbMultiplier;
+        existing.FoodBudgetAmount = target.FoodBudgetAmount;
+        existing.FoodBudgetPeriod = string.IsNullOrWhiteSpace(target.FoodBudgetPeriod) ? "Weekly" : target.FoodBudgetPeriod;
+        existing.FoodBudgetCategoryId = target.FoodBudgetCategoryId;
+        existing.FoodBudgetCurrency = string.IsNullOrWhiteSpace(target.FoodBudgetCurrency) ? "MXN" : target.FoodBudgetCurrency;
         existing.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);

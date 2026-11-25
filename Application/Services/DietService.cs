@@ -27,7 +27,8 @@ public class DietService(
     ICategoryRepository categoryRepo,
     IRoutineRepository routineRepo,
     IUserGamificationRepository gamificationRepo,
-    IHabitService habitService) : IDietService
+    IHabitService habitService,
+    IFinanceRepository financeRepo) : IDietService
 {
     private readonly IDietTargetRepository _dietTargetRepo = dietTargetRepo ?? throw new ArgumentNullException(nameof(dietTargetRepo));
     private readonly IMealRepository _mealRepo = mealRepo ?? throw new ArgumentNullException(nameof(mealRepo));
@@ -41,6 +42,7 @@ public class DietService(
     private readonly IRoutineRepository _routineRepo = routineRepo ?? throw new ArgumentNullException(nameof(routineRepo));
     private readonly IUserGamificationRepository _gamificationRepo = gamificationRepo ?? throw new ArgumentNullException(nameof(gamificationRepo));
     private readonly IHabitService _habitService = habitService ?? throw new ArgumentNullException(nameof(habitService));
+    private readonly IFinanceRepository _financeRepo = financeRepo ?? throw new ArgumentNullException(nameof(financeRepo));
 
     #region Targets & Calculations
 
@@ -83,7 +85,11 @@ public class DietService(
             EatingWindowEnd = dto.EatingWindowEnd ?? "20:00",
             IsCalorieCyclingEnabled = dto.IsCalorieCyclingEnabled,
             WorkoutDayCarbMultiplier = dto.WorkoutDayCarbMultiplier > 0 ? dto.WorkoutDayCarbMultiplier : 1.20,
-            RestDayCarbMultiplier = dto.RestDayCarbMultiplier > 0 ? dto.RestDayCarbMultiplier : 0.80
+            RestDayCarbMultiplier = dto.RestDayCarbMultiplier > 0 ? dto.RestDayCarbMultiplier : 0.80,
+            FoodBudgetAmount = dto.FoodBudgetAmount,
+            FoodBudgetPeriod = string.IsNullOrWhiteSpace(dto.FoodBudgetPeriod) ? "Weekly" : dto.FoodBudgetPeriod,
+            FoodBudgetCategoryId = dto.FoodBudgetCategoryId,
+            FoodBudgetCurrency = string.IsNullOrWhiteSpace(dto.FoodBudgetCurrency) ? "MXN" : dto.FoodBudgetCurrency
         };
 
         var saved = await _dietTargetRepo.UpsertAsync(entity, cancellationToken);
@@ -785,6 +791,113 @@ public class DietService(
 
     #region Mapping Helpers
 
+    public async Task<FoodBudgetSummaryDto> GetFoodBudgetSummaryAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var target = await _dietTargetRepo.GetByUserIdAsync(userId, cancellationToken);
+        var period = string.IsNullOrWhiteSpace(target?.FoodBudgetPeriod) ? "Weekly" : target.FoodBudgetPeriod;
+        var currency = string.IsNullOrWhiteSpace(target?.FoodBudgetCurrency) ? "MXN" : target.FoodBudgetCurrency;
+
+        var now = DateTime.UtcNow.Date;
+        DateTime periodStart;
+        DateTime periodEnd;
+
+        if (string.Equals(period, "Monthly", StringComparison.OrdinalIgnoreCase))
+        {
+            periodStart = new DateTime(now.Year, now.Month, 1);
+            periodEnd = periodStart.AddMonths(1).AddDays(-1);
+        }
+        else if (string.Equals(period, "Biweekly", StringComparison.OrdinalIgnoreCase))
+        {
+            if (now.Day <= 15)
+            {
+                periodStart = new DateTime(now.Year, now.Month, 1);
+                periodEnd = new DateTime(now.Year, now.Month, 15);
+            }
+            else
+            {
+                periodStart = new DateTime(now.Year, now.Month, 16);
+                periodEnd = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+            }
+        }
+        else // Weekly (Monday - Sunday)
+        {
+            var diff = (7 + (now.DayOfWeek - DayOfWeek.Monday)) % 7;
+            periodStart = now.AddDays(-diff);
+            periodEnd = periodStart.AddDays(6);
+        }
+
+        var userCategories = (await _categoryRepo.GetByUserIdAsync(userId, cancellationToken)).ToList();
+        Category? linkedCategory = null;
+        if (target?.FoodBudgetCategoryId is Guid catId)
+        {
+            linkedCategory = userCategories.FirstOrDefault(c => c.Id == catId);
+        }
+
+        // If user linked a Finance category with MonthlyLimit and didn't set FoodBudgetAmount explicitly, derive from it
+        decimal? budgetAmount = target?.FoodBudgetAmount;
+        if ((!budgetAmount.HasValue || budgetAmount <= 0) && linkedCategory?.MonthlyLimit is > 0)
+        {
+            budgetAmount = string.Equals(period, "Weekly", StringComparison.OrdinalIgnoreCase)
+                ? Math.Round(linkedCategory.MonthlyLimit.Value / 4m, 2)
+                : string.Equals(period, "Biweekly", StringComparison.OrdinalIgnoreCase)
+                    ? Math.Round(linkedCategory.MonthlyLimit.Value / 2m, 2)
+                    : linkedCategory.MonthlyLimit.Value;
+        }
+
+        var finances = await _financeRepo.GetAllByUserIdAsync(userId, cancellationToken);
+        var foodCategoryIds = new HashSet<Guid>();
+        if (linkedCategory != null)
+        {
+            foodCategoryIds.Add(linkedCategory.Id);
+        }
+        else
+        {
+            foreach (var c in userCategories)
+            {
+                var n = (c.Name ?? "").ToLowerInvariant();
+                if (n.Contains("comida") || n.Contains("super") || n.Contains("súper") ||
+                    n.Contains("alimento") || n.Contains("food") || n.Contains("despensa") ||
+                    n.Contains("restaurante"))
+                {
+                    foodCategoryIds.Add(c.Id);
+                }
+            }
+        }
+
+        decimal spent = finances
+            .Where(f =>
+                (string.Equals(f.TransactionType, "Expense", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(f.TransactionType, "Gasto", StringComparison.OrdinalIgnoreCase)) &&
+                f.TransactionDate.Date >= periodStart &&
+                f.TransactionDate.Date <= periodEnd &&
+                f.CategoryId.HasValue &&
+                foodCategoryIds.Contains(f.CategoryId.Value))
+            .Sum(f => f.Amount);
+
+        decimal remaining = budgetAmount.HasValue ? Math.Max(0, budgetAmount.Value - spent) : 0;
+        double percentage = budgetAmount is > 0 ? Math.Round((double)(spent / budgetAmount.Value) * 100, 1) : 0;
+
+        int remainingDays = Math.Max(1, (periodEnd - now).Days + 1);
+        decimal? suggestedPerMeal = budgetAmount is > 0
+            ? Math.Round(remaining / (remainingDays * 3m), 2)
+            : null;
+
+        return new FoodBudgetSummaryDto
+        {
+            BudgetAmount = budgetAmount,
+            Period = period,
+            Currency = currency,
+            SpentAmount = Math.Round(spent, 2),
+            RemainingAmount = Math.Round(remaining, 2),
+            PercentageUsed = percentage,
+            SuggestedPerMealBudget = suggestedPerMeal,
+            LinkedCategoryId = linkedCategory?.Id ?? target?.FoodBudgetCategoryId,
+            LinkedCategoryName = linkedCategory?.Name,
+            PeriodStartDate = periodStart.ToString("yyyy-MM-dd"),
+            PeriodEndDate = periodEnd.ToString("yyyy-MM-dd")
+        };
+    }
+
     private static DietTargetDto MapToTargetDto(DietTarget entity) => new()
     {
         TargetCalories = entity.TargetCalories,
@@ -797,7 +910,11 @@ public class DietService(
         EatingWindowEnd = entity.EatingWindowEnd,
         IsCalorieCyclingEnabled = entity.IsCalorieCyclingEnabled,
         WorkoutDayCarbMultiplier = entity.WorkoutDayCarbMultiplier,
-        RestDayCarbMultiplier = entity.RestDayCarbMultiplier
+        RestDayCarbMultiplier = entity.RestDayCarbMultiplier,
+        FoodBudgetAmount = entity.FoodBudgetAmount,
+        FoodBudgetPeriod = entity.FoodBudgetPeriod,
+        FoodBudgetCategoryId = entity.FoodBudgetCategoryId,
+        FoodBudgetCurrency = entity.FoodBudgetCurrency
     };
 
     private static MealDto MapToMealDto(Meal entity) => new()

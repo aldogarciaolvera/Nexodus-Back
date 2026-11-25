@@ -17,6 +17,10 @@ public class DietTarget
     public bool IsCalorieCyclingEnabled { get; set; } = true;
     public double WorkoutDayCarbMultiplier { get; set; } = 1.20; // +20% carbohidratos en días de gym
     public double RestDayCarbMultiplier { get; set; } = 0.80; // -20% carbohidratos en días de descanso
+    public decimal? FoodBudgetAmount { get; set; }
+    public string FoodBudgetPeriod { get; set; } = "Weekly"; // "Weekly", "Biweekly", "Monthly"
+    public Guid? FoodBudgetCategoryId { get; set; }
+    public string FoodBudgetCurrency { get; set; } = "MXN";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

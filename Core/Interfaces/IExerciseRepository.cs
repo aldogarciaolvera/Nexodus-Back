@@ -12,5 +12,6 @@ namespace Nexodus_Back.Core.Interfaces;
 public interface IExerciseRepository
 {
     Task<IEnumerable<Exercise>> GetAllAsync(int page = 1, int pageSize = 50, CancellationToken cancellationToken = default);
+    Task<List<Exercise>> GetAllCatalogAsync(CancellationToken cancellationToken = default);
     Task<Exercise?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 }

@@ -135,6 +135,7 @@ builder.Services.AddScoped<IUserGamificationRepository, UserGamificationReposito
 builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
 builder.Services.AddScoped<IPantryRepository, PantryRepository>();
 builder.Services.AddScoped<IHabitRepository, HabitRepository>();
+builder.Services.AddScoped<ICardioRepository, CardioRepository>();
 builder.Services.AddScoped<IStorageService, S3StorageService>();
 
 // Application Services
@@ -146,6 +147,7 @@ builder.Services.AddScoped<ITodoListService, TodoListService>();
 builder.Services.AddScoped<INoteService, NoteService>();
 builder.Services.AddScoped<IExerciseService, ExerciseService>();
 builder.Services.AddScoped<IRoutineService, RoutineService>();
+builder.Services.AddScoped<IRoutineAiService, RoutineAiService>();
 builder.Services.AddScoped<IWorkoutLogService, WorkoutLogService>();
 builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IWorkoutSessionService, WorkoutSessionService>();
@@ -156,6 +158,8 @@ builder.Services.AddScoped<IRecipeAiService, RecipeAiService>();
 builder.Services.AddScoped<IOpenFoodFactsService, OpenFoodFactsService>();
 builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
 builder.Services.AddScoped<IHabitService, HabitService>();
+builder.Services.AddScoped<ICardioService, CardioService>();
+builder.Services.AddScoped<ICardioAiService, CardioAiService>();
 
 // Configure CORS with explicit allowed origins (SEC-01)
 var configuredOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
@@ -260,12 +264,14 @@ app.MapRecipeEndpoints();
 app.MapPantryEndpoints();
 app.MapGamificationEndpoints();
 app.MapHabitEndpoints();
+app.MapCardioEndpoints();
 
 // Seed initial data
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<NexodusDbContext>();
     await DataSeeder.SeedExercisesAsync(context, app.Environment.ContentRootPath, app.Logger);
+    await DataSeeder.SeedStretchingExercisesAsync(context, app.Logger);
     await DataSeeder.SeedFoodCategoriesAsync(context, app.Logger);
     await DataSeeder.SeedFoodsAsync(context, app.Logger);
     await DataSeeder.SeedRecipesAsync(context, app.Logger);

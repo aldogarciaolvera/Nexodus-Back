@@ -38,6 +38,8 @@ public class NexodusDbContext : DbContext
     public DbSet<Habit> Habits { get; set; } = null!;
     public DbSet<HabitCompletion> HabitCompletions { get; set; } = null!;
     public DbSet<HabitReminder> HabitReminders { get; set; } = null!;
+    public DbSet<CardioSession> CardioSessions { get; set; } = null!;
+    public DbSet<CardioSegment> CardioSegments { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -79,6 +81,23 @@ public class NexodusDbContext : DbContext
 
         modelBuilder.Entity<Exercise>()
             .HasIndex(e => e.ExternalId).IsUnique();
+
+        modelBuilder.Entity<Routine>(entity =>
+        {
+            entity.Property(r => r.IsAiGenerated).HasDefaultValue(false);
+            entity.Property(r => r.IncludeCardio).HasDefaultValue(false);
+            entity.Property(r => r.RoutineType).HasMaxLength(32).HasDefaultValue("Strength");
+            entity.Property(r => r.IsTemplate).HasDefaultValue(false);
+        });
+
+        modelBuilder.Entity<CardioSession>(entity =>
+        {
+            entity.HasIndex(c => new { c.UserId, c.StartTime });
+            entity.HasMany(c => c.Segments)
+                .WithOne(s => s.CardioSession)
+                .HasForeignKey(s => s.CardioSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<RoutineExercise>()
             .HasKey(re => new { re.RoutineId, re.ExerciseId });

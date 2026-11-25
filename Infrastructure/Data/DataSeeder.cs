@@ -79,6 +79,43 @@ public static class DataSeeder
         logger?.LogInformation("DataSeeder: {Count} ejercicios insertados exitosamente.", exercisesToInsert.Count);
     }
 
+    public static async Task SeedStretchingExercisesAsync(NexodusDbContext context, ILogger? logger = null)
+    {
+        var existingExternalIds = await context.Exercises
+            .Where(e => e.Category == "stretching")
+            .Select(e => e.ExternalId)
+            .ToListAsync();
+
+        var existingSet = new HashSet<string>(existingExternalIds, StringComparer.OrdinalIgnoreCase);
+
+        var stretchingCatalog = new List<Exercise>
+        {
+            new() { ExternalId = "stretching/neck-side-stretch", Name = "Estiramiento Lateral de Cuello", BodyPart = "neck", Muscle = "neck", Equipment = "bodyweight", Category = "stretching", Instructions = "Inclina suavemente la cabeza hacia un hombro manteniendo el hombro opuesto relajado.\nRespira profundo y sostén sin forzar." },
+            new() { ExternalId = "stretching/cross-body-shoulder-stretch", Name = "Estiramiento de Hombro Cruzado", BodyPart = "shoulders", Muscle = "delts", Equipment = "bodyweight", Category = "stretching", Instructions = "Cruza un brazo por delante del pecho y presiona suavemente por encima del codo con la otra mano.\nMantén el hombro alejado de la oreja." },
+            new() { ExternalId = "stretching/chest-doorway-opener", Name = "Apertura de Pecho y Pectoral", BodyPart = "chest", Muscle = "pectorals", Equipment = "bodyweight", Category = "stretching", Instructions = "Apoya el antebrazo en una pared o marco a 90 grados y gira suavemente el torso hacia el lado contrario hasta sentir estiramiento en el pecho." },
+            new() { ExternalId = "stretching/childs-pose", Name = "Postura del Niño (Child's Pose)", BodyPart = "back", Muscle = "lats", Equipment = "bodyweight", Category = "stretching", Instructions = "Arrodíllate, lleva los glúteos hacia los talones y extiende los brazos al frente sobre el suelo.\nRelaja la frente hacia el piso y respira lento." },
+            new() { ExternalId = "stretching/cat-cow-mobility", Name = "Gato-Vaca (Movilidad Espinal)", BodyPart = "back", Muscle = "spine", Equipment = "bodyweight", Category = "stretching", Instructions = "En cuatro puntos, alterna lentamente entre arquear la espalda inhalando y redondearla exhalando." },
+            new() { ExternalId = "stretching/supine-spinal-twist", Name = "Torsión Espinal Supina", BodyPart = "back", Muscle = "spine", Equipment = "bodyweight", Category = "stretching", Instructions = "Acostado boca arriba, lleva una rodilla cruzada hacia el lado opuesto manteniendo ambos hombros cerca del suelo." },
+            new() { ExternalId = "stretching/kneeling-lat-stretch", Name = "Estiramiento de Dorsal en Rodillas", BodyPart = "back", Muscle = "lats", Equipment = "bodyweight", Category = "stretching", Instructions = "Con los brazos extendidos al frente apoyados en un banco o el piso, baja el pecho hacia el suelo manteniendo la espalda larga." },
+            new() { ExternalId = "stretching/pigeon-pose", Name = "Postura de la Paloma (Glúteo y Cadera)", BodyPart = "upper legs", Muscle = "glutes", Equipment = "bodyweight", Category = "stretching", Instructions = "Lleva una pierna flexionada al frente y extiende la otra hacia atrás.\nMantén las caderas niveladas e inclina el torso suavemente." },
+            new() { ExternalId = "stretching/kneeling-hip-flexor", Name = "Estiramiento de Flexor de Cadera", BodyPart = "upper legs", Muscle = "quads", Equipment = "bodyweight", Category = "stretching", Instructions = "En posición de zancada con una rodilla apoyada, contrae el glúteo trasero y desplaza la cadera hacia adelante sin arquear la zona lumbar." },
+            new() { ExternalId = "stretching/figure-four-glute", Name = "Estiramiento Figura 4 (Piriforme)", BodyPart = "upper legs", Muscle = "glutes", Equipment = "bodyweight", Category = "stretching", Instructions = "Acostado boca arriba, cruza un tobillo sobre la rodilla opuesta y acerca suavemente el muslo hacia el pecho." },
+            new() { ExternalId = "stretching/seated-butterfly", Name = "Mariposa Sentada (Aductores)", BodyPart = "upper legs", Muscle = "adductors", Equipment = "bodyweight", Category = "stretching", Instructions = "Siéntate juntando las plantas de los pies y deja caer las rodillas hacia los lados manteniendo la espalda erguida." },
+            new() { ExternalId = "stretching/seated-hamstring-stretch", Name = "Estiramiento de Isquiotibiales Sentado", BodyPart = "upper legs", Muscle = "hamstrings", Equipment = "bodyweight", Category = "stretching", Instructions = "Sentado con una pierna extendida, inclina el torso desde la cadera con espalda recta hacia el pie." },
+            new() { ExternalId = "stretching/standing-quad-stretch", Name = "Estiramiento de Cuádriceps de Pie", BodyPart = "upper legs", Muscle = "quads", Equipment = "bodyweight", Category = "stretching", Instructions = "De pie, sujeta el empeine detrás del glúteo manteniendo las rodillas juntas y la pelvis neutra." },
+            new() { ExternalId = "stretching/downward-dog", Name = "Perro Boca Abajo (Cadena Posterior)", BodyPart = "lower legs", Muscle = "calves", Equipment = "bodyweight", Category = "stretching", Instructions = "Eleva las caderas formando una V invertida, empuja los talones suavemente hacia el suelo y alarga la espalda." },
+            new() { ExternalId = "stretching/wall-calf-stretch", Name = "Estiramiento de Gemelos en Pared", BodyPart = "lower legs", Muscle = "calves", Equipment = "bodyweight", Category = "stretching", Instructions = "Apoya las manos en una pared, lleva una pierna atrás totalmente extendida y presiona el talón contra el suelo." },
+            new() { ExternalId = "stretching/wrist-flexor-stretch", Name = "Estiramiento de Muñecas y Antebrazos", BodyPart = "lower arms", Muscle = "forearms", Equipment = "bodyweight", Category = "stretching", Instructions = "Extiende un brazo al frente con la palma hacia arriba y tira suavemente de los dedos hacia abajo con la otra mano." }
+        };
+
+        var toInsert = stretchingCatalog.Where(e => !existingSet.Contains(e.ExternalId)).ToList();
+        if (toInsert.Count == 0) return;
+
+        await context.Exercises.AddRangeAsync(toInsert);
+        await context.SaveChangesAsync();
+        logger?.LogInformation("DataSeeder: {Count} ejercicios de estiramiento insertados exitosamente.", toInsert.Count);
+    }
+
     public static async Task SeedFoodCategoriesAsync(NexodusDbContext context, ILogger? logger = null)
     {
         // 1. Asegurar que las categorías de comida existan

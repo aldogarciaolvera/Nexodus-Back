@@ -54,6 +54,16 @@ public static class DietEndpoints
         .Produces<CalculatedTargetResponseDto>(StatusCodes.Status200OK)
         .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
+        group.MapGet("/budget-summary", async (IDietService service, ClaimsPrincipal user, CancellationToken ct) =>
+        {
+            var userId = user.GetUserId();
+            var summary = await service.GetFoodBudgetSummaryAsync(userId, ct);
+            return Results.Ok(summary);
+        })
+        .WithName("GetFoodBudgetSummary")
+        .WithSummary("Obtiene el resumen del presupuesto de comidas sincronizado con gastos de Finanzas")
+        .Produces<FoodBudgetSummaryDto>(StatusCodes.Status200OK);
+
         #endregion
 
         #region Meals & Daily Summary
