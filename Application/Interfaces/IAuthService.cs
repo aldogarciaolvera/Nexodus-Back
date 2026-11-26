@@ -23,4 +23,9 @@ public interface IAuthService
     /// Refreshes an expired JWT token using a valid refresh token.
     /// </summary>
     Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Revokes an active refresh token and logs out the user session.
+    /// </summary>
+    Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -18,10 +19,10 @@ public static class UserEndpoints
             .WithTags("User")
             .RequireAuthorization();
 
-        group.MapGet("/me", async (IUserService userService, ClaimsPrincipal user) =>
+        group.MapGet("/me", async (IUserService userService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId().ToString();
-            var response = await userService.GetCurrentUserAsync(userId);
+            var response = await userService.GetCurrentUserAsync(userId, ct);
             return Results.Ok(ApiResponse<UserResponse>.Success(response));
         })
         .WithName("GetCurrentUser")
@@ -30,10 +31,10 @@ public static class UserEndpoints
         .ProducesProblem(StatusCodes.Status401Unauthorized)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPut("/me", async (UpdateUserRequest request, IUserService userService, ClaimsPrincipal user) =>
+        group.MapPut("/me", async (UpdateUserRequest request, IUserService userService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId().ToString();
-            var response = await userService.UpdateUserAsync(userId, request);
+            var response = await userService.UpdateUserAsync(userId, request, ct);
             return Results.Ok(ApiResponse<UserResponse>.Success(response));
         })
         .AddEndpointFilter<ValidationFilter<UpdateUserRequest>>()

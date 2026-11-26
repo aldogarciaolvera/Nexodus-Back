@@ -520,4 +520,331 @@ curl -X GET http://localhost:5079/api/gym/sessions/recovery/muscle-status \
 curl -X GET http://localhost:5079/api/gym/sessions/exercises/<EXERCISE_ID>/records \
 -H "Authorization: Bearer <TOKEN>"
 
+### Nexodus Lens (AI Vision) & Open Food Facts Endpoints ###
 
+# 1. Analizar Foto de Plato con Google Gemini Vision (Nexodus Lens)
+curl -X POST http://localhost:5079/api/diet/lens/analyze \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "base64Image": "<IMAGEN_EN_BASE64>",
+  "mimeType": "image/jpeg",
+  "additionalContext": "Pechuga de pollo asada con arroz y ensalada"
+}'
+
+# 2. Búsqueda por Código de Barras con Fallback a Open Food Facts
+curl -X GET http://localhost:5079/api/diet/foods/barcode/7501000111204 \
+-H "Authorization: Bearer <TOKEN>"
+
+# 3. Resumen Diario con Balance Calórico Neto (Consumidas - Quemadas en Gym)
+curl -X GET "http://localhost:5079/api/diet/daily?date=2026-11-06" \
+-H "Authorization: Bearer <TOKEN>"
+
+
+
+
+
+### Gamification & Rachas Endpoints ###
+
+# Get Gamification & Streak Status
+curl -X GET http://localhost:5079/api/gamification/status \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Update Scheduled Rest Days
+curl -X PUT http://localhost:5079/api/gamification/rest-days \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer YOUR_JWT_TOKEN" \
+-d '{
+  "restDays": ["Saturday", "Sunday"]
+}'
+
+# Restore Broken Streak with Cyphers or Freezes
+curl -X POST http://localhost:5079/api/gamification/streak/restore \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Buy Streak Freeze in Cyber Vault
+curl -X POST http://localhost:5079/api/gamification/vault/buy-freeze \
+-H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+
+### Auth Logout (Revocación de Sesión) ###
+
+# Logout / Revocar Refresh Token
+curl -X POST http://localhost:5079/api/auth/logout \
+-H "Content-Type: application/json" \
+-d '{
+  "refreshToken": "TU_REFRESH_TOKEN_AQUI"
+}'
+
+
+### Recipes & AI Chef Endpoints ###
+
+# 1. Buscar Recetas (Catálogo Base, Propias y Comunitarias)
+curl -X GET "http://localhost:5079/api/recipes?query=pollo&mealType=Lunch&page=1&pageSize=20" \
+-H "Authorization: Bearer <TOKEN>"
+
+# 2. Obtener Detalle de Receta por ID
+curl -X GET http://localhost:5079/api/recipes/<RECIPE_ID> \
+-H "Authorization: Bearer <TOKEN>"
+
+# 3. Obtener Variantes Derivadas de una Receta
+curl -X GET http://localhost:5079/api/recipes/<RECIPE_ID>/variants \
+-H "Authorization: Bearer <TOKEN>"
+
+# 4. Crear Nueva Receta Propia o Comunitaria
+curl -X POST http://localhost:5079/api/recipes \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "name": "Pechuga al Curry con Arroz",
+  "description": "Receta alta en proteína y rápida de preparar",
+  "mealType": "Lunch",
+  "dietType": "HighProtein",
+  "prepTimeMinutes": 10,
+  "cookTimeMinutes": 20,
+  "servings": 2,
+  "difficulty": "Easy",
+  "isCommunity": true,
+  "tags": ["HighProtein", "Pollo", "Rápido"],
+  "ingredients": [
+    {
+      "customFoodName": "Pechuga de pollo",
+      "cookingState": "Raw",
+      "quantity": 300,
+      "unit": "g",
+      "calories": 495,
+      "protein": 93,
+      "carbs": 0,
+      "fat": 10.8
+    },
+    {
+      "customFoodName": "Arroz blanco cocido",
+      "cookingState": "Cooked",
+      "quantity": 200,
+      "unit": "g",
+      "calories": 260,
+      "protein": 5.4,
+      "carbs": 56.4,
+      "fat": 0.6
+    }
+  ],
+  "steps": [
+    { "stepNumber": 1, "instruction": "Cortar la pechuga en dados y sazonar con curry y sal." },
+    { "stepNumber": 2, "instruction": "Saltear a fuego medio durante 10 minutos." },
+    { "stepNumber": 3, "instruction": "Servir acompañado del arroz caliente." }
+  ]
+}'
+
+# 5. Crear Variante Personalizada de una Receta Existente
+curl -X POST http://localhost:5079/api/recipes/<RECIPE_ID>/variants \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "name": "Pechuga al Curry Keto con Coliflor",
+  "description": "Variante baja en carbohidratos sustituyendo el arroz por arroz de coliflor",
+  "mealType": "Lunch",
+  "dietType": "Keto",
+  "prepTimeMinutes": 10,
+  "cookTimeMinutes": 15,
+  "servings": 2,
+  "difficulty": "Easy",
+  "isCommunity": true,
+  "tags": ["Keto", "LowCarb"],
+  "ingredients": [
+    {
+      "customFoodName": "Pechuga de pollo",
+      "quantity": 300,
+      "unit": "g",
+      "calories": 495,
+      "protein": 93,
+      "carbs": 0,
+      "fat": 10.8
+    },
+    {
+      "customFoodName": "Arroz de coliflor",
+      "quantity": 200,
+      "unit": "g",
+      "calories": 50,
+      "protein": 4,
+      "carbs": 6,
+      "fat": 0.5
+    }
+  ],
+  "steps": [
+    { "stepNumber": 1, "instruction": "Cocinar el pollo con especias y saltear la coliflor rallada 5 min." }
+  ]
+}'
+
+# 6. Registrar Receta Completa como Plato en el Diario de Comidas
+curl -X POST http://localhost:5079/api/recipes/log \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "recipeId": "<RECIPE_ID>",
+  "date": "2026-11-16",
+  "mealType": "Lunch",
+  "servings": 1.0
+}'
+
+# 7. Generar Receta con IA Adaptada a Macros Restantes (Chef IA)
+curl -X POST http://localhost:5079/api/recipes/ai/match-macros \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "remainingCalories": 550,
+  "remainingProtein": 45,
+  "remainingCarbs": 40,
+  "remainingFat": 15,
+  "mealType": "Dinner",
+  "dietType": "HighProtein",
+  "preferences": "sin lácteos, preparación menor a 25 minutos",
+  "maxPrepTimeMinutes": 25
+}'
+
+# 8. Sugerir Recetas con Inventario de Despensa (Modo Despensa)
+curl -X POST http://localhost:5079/api/recipes/ai/pantry-cook \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "freeTextIngredients": "tengo 2 huevos, tomate, cebolla y una lata de atún",
+  "mealType": "Dinner",
+  "dietType": "Standard",
+  "useUserPantry": true,
+  "maxPrepTimeMinutes": 30
+}'
+
+# 9. Actualizar Receta Propia
+curl -X PUT http://localhost:5079/api/recipes/<RECIPE_ID> \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "name": "Pechuga al Curry Mejorada",
+  "description": "Nueva versión con toque de leche de coco",
+  "servings": 3
+}'
+
+# 10. Eliminar Receta Propia
+curl -X DELETE http://localhost:5079/api/recipes/<RECIPE_ID> \
+-H "Authorization: Bearer <TOKEN>"
+
+
+### Pantry (Despensa del Usuario) Endpoints ###
+
+# 1. Obtener Despensa del Usuario
+curl -X GET http://localhost:5079/api/pantry \
+-H "Authorization: Bearer <TOKEN>"
+
+# 2. Agregar Ingrediente a la Despensa
+curl -X POST http://localhost:5079/api/pantry \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "name": "Huevos",
+  "quantity": 12,
+  "unit": "unidades",
+  "category": "Dairy",
+  "expirationDate": "2026-11-30T00:00:00Z"
+}'
+
+# 3. Agregar Múltiples Ingredientes en Lote
+curl -X POST http://localhost:5079/api/pantry/bulk \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '[
+  { "name": "Arroz integral", "quantity": 1000, "unit": "g", "category": "Carb" },
+  { "name": "Aceite de oliva", "quantity": 500, "unit": "ml", "category": "Fat" },
+  { "name": "Avena en hojuelas", "quantity": 800, "unit": "g", "category": "Carb" }
+]'
+
+# 4. Actualizar Ingrediente en Despensa
+curl -X PUT http://localhost:5079/api/pantry/<PANTRY_ITEM_ID> \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "quantity": 6,
+  "unit": "unidades"
+}'
+
+# 5. Eliminar Ingrediente de Despensa
+curl -X DELETE http://localhost:5079/api/pantry/<PANTRY_ITEM_ID> \
+-H "Authorization: Bearer <TOKEN>"
+
+
+### Habits & Habit Tracking Endpoints ###
+
+# 1. Crear Nuevo Hábito
+curl -X POST http://localhost:5079/api/habits \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "name": "Beber 2.5L de Agua",
+  "description": "Mantenerse hidratado durante el día laboral",
+  "icon": "water_drop",
+  "color": "#00E5FF",
+  "category": "Health",
+  "habitType": "Build",
+  "trackingType": "Numeric",
+  "targetValue": 2500,
+  "targetUnit": "ml",
+  "onTapAction": "ToggleOrAddOne",
+  "frequencyType": "Daily",
+  "streakUnit": "Days",
+  "autoCompleteSource": "Nexodus.Water",
+  "reminders": [
+    { "time": "09:00", "daysOfWeek": "Monday,Tuesday,Wednesday,Thursday,Friday", "isEnabled": true },
+    { "time": "15:00", "daysOfWeek": "Monday,Tuesday,Wednesday,Thursday,Friday", "isEnabled": true }
+  ]
+}'
+
+# 2. Obtener Todos los Hábitos (con Cuadrícula Reciente)
+curl -X GET "http://localhost:5079/api/habits?includeArchived=false&recentDays=60" \
+-H "Authorization: Bearer <TOKEN>"
+
+# 3. Obtener Detalle de un Hábito por ID
+curl -X GET "http://localhost:5079/api/habits/<HABIT_ID>?recentDays=60" \
+-H "Authorization: Bearer <TOKEN>"
+
+# 4. Actualizar Configuración de un Hábito
+curl -X PUT http://localhost:5079/api/habits/<HABIT_ID> \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "name": "Beber 3L de Agua",
+  "targetValue": 3000,
+  "color": "#00B0FF"
+}'
+
+# 5. Realizar Check-in Rápido de un Hábito (Touch / Increment / Value)
+curl -X POST http://localhost:5079/api/habits/<HABIT_ID>/check-in \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "date": "2026-11-16",
+  "action": "AddAmount",
+  "amount": 500,
+  "note": "Botella de agua después de entrenar"
+}'
+
+# 6. Obtener Historial de Celdas (Heatmap / Cuadrícula de Días)
+curl -X GET "http://localhost:5079/api/habits/<HABIT_ID>/history?days=90" \
+-H "Authorization: Bearer <TOKEN>"
+
+# 7. Obtener Estadísticas Avanzadas del Hábito
+curl -X GET http://localhost:5079/api/habits/<HABIT_ID>/stats \
+-H "Authorization: Bearer <TOKEN>"
+
+# 8. Reordenar Hábitos en la Pantalla Principal
+curl -X POST http://localhost:5079/api/habits/reorder \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer <TOKEN>" \
+-d '{
+  "orderedHabitIds": [
+    "<HABIT_ID_1>",
+    "<HABIT_ID_2>",
+    "<HABIT_ID_3>"
+  ]
+}'
+
+# 9. Eliminar un Hábito
+curl -X DELETE http://localhost:5079/api/habits/<HABIT_ID> \
+-H "Authorization: Bearer <TOKEN>"

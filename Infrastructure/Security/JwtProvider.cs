@@ -6,6 +6,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Nexodus_Back.Core.Entities;
+using Nexodus_Back.Core.Exceptions;
 using Nexodus_Back.Core.Interfaces;
 using Nexodus_Back.Infrastructure.Configuration;
 
@@ -22,7 +23,7 @@ public class JwtProvider(IOptions<JwtOptions> options) : IJwtProvider
     {
         if (string.IsNullOrEmpty(_options.Secret))
         {
-            throw new InvalidOperationException("JWT Secret is not configured.");
+            throw new UnauthorizedException("La configuración de seguridad JWT no está disponible en el servidor.");
         }
 
         var tokenHandler = new JwtSecurityTokenHandler();

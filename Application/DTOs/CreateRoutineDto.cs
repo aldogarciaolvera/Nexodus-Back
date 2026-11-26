@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace Nexodus_Back.Application.DTOs;
 
 public record CreateRoutineDto(
@@ -5,7 +8,15 @@ public record CreateRoutineDto(
     string? Description,
     string? DifficultyLevel,
     int? TargetDay,
-    IEnumerable<CreateRoutineExerciseDto> Exercises
+    IEnumerable<CreateRoutineExerciseDto> Exercises,
+    bool IsAiGenerated = false,
+    int? WarmupMinutes = null,
+    List<WarmupExerciseDto>? WarmupExercises = null,
+    bool IncludeCardio = false,
+    int? CardioMinutes = null,
+    string? CardioType = null,
+    string RoutineType = "Strength",
+    string? Purpose = null
 );
 
 public record CreateRoutineExerciseDto(

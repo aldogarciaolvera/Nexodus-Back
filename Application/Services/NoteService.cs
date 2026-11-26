@@ -10,22 +10,30 @@ public class NoteService(INoteRepository repository) : INoteService
 {
     private readonly INoteRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
 
-    public async Task<IEnumerable<NoteDto>> GetAllNotesAsync(Guid userId)
+    public async Task<IEnumerable<NoteDto>> GetAllNotesAsync(Guid userId, int? page = null, int? pageSize = null, CancellationToken cancellationToken = default)
     {
-        var notes = await _repository.GetAllByUserIdAsync(userId);
-        return notes.Select(MapToDto);
+        var notes = await _repository.GetAllByUserIdAsync(userId, cancellationToken);
+        var query = notes.AsQueryable();
+
+        if (page.HasValue && page.Value > 0)
+        {
+            var limit = Math.Clamp(pageSize ?? 50, 1, 100);
+            query = query.Skip((page.Value - 1) * limit).Take(limit);
+        }
+
+        return query.Select(MapToDto);
     }
 
-    public async Task<NoteDto?> GetNoteByIdAsync(Guid id, Guid userId)
+    public async Task<NoteDto?> GetNoteByIdAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
     {
-        var note = await _repository.GetByIdAndUserIdAsync(id, userId);
+        var note = await _repository.GetByIdAndUserIdAsync(id, userId, cancellationToken);
         if (note == null)
             throw new NotFoundException($"Note with ID {id} not found.");
 
         return MapToDto(note);
     }
 
-    public async Task<NoteDto> CreateNoteAsync(Guid userId, CreateNoteDto dto)
+    public async Task<NoteDto> CreateNoteAsync(Guid userId, CreateNoteDto dto, CancellationToken cancellationToken = default)
     {
         var note = new Note
         {
@@ -40,13 +48,13 @@ public class NoteService(INoteRepository repository) : INoteService
             }).ToList() ?? new List<ChecklistItem>()
         };
 
-        var created = await _repository.AddAsync(note);
+        var created = await _repository.AddAsync(note, cancellationToken);
         return MapToDto(created);
     }
 
-    public async Task<NoteDto> UpdateNoteAsync(Guid id, Guid userId, UpdateNoteDto dto)
+    public async Task<NoteDto> UpdateNoteAsync(Guid id, Guid userId, UpdateNoteDto dto, CancellationToken cancellationToken = default)
     {
-        var note = await _repository.GetByIdAndUserIdAsync(id, userId);
+        var note = await _repository.GetByIdAndUserIdAsync(id, userId, cancellationToken);
         if (note == null)
             throw new NotFoundException($"Note with ID {id} not found.");
 
@@ -108,17 +116,17 @@ public class NoteService(INoteRepository repository) : INoteService
             }
         }
 
-        await _repository.UpdateAsync(note);
+        await _repository.UpdateAsync(note, cancellationToken);
         return MapToDto(note);
     }
 
-    public async Task DeleteNoteAsync(Guid id, Guid userId)
+    public async Task DeleteNoteAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
     {
-        var note = await _repository.GetByIdAndUserIdAsync(id, userId);
+        var note = await _repository.GetByIdAndUserIdAsync(id, userId, cancellationToken);
         if (note == null)
             throw new NotFoundException($"Note with ID {id} not found.");
 
-        await _repository.DeleteAsync(note);
+        await _repository.DeleteAsync(note, cancellationToken);
     }
 
     private static NoteDto MapToDto(Note note)

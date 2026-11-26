@@ -30,6 +30,26 @@ public static class RoutineEndpoints
         .WithSummary("Obtiene todas las rutinas del usuario autenticado")
         .Produces<IEnumerable<RoutineDto>>(StatusCodes.Status200OK);
 
+        group.MapGet("/stretching/templates", async (IRoutineService routineService, CancellationToken cancellationToken) =>
+        {
+            var templates = await routineService.GetStretchingTemplatesAsync(cancellationToken);
+            return Results.Ok(templates);
+        })
+        .WithName("GetStretchingTemplates")
+        .WithSummary("Obtiene plantillas pre-estructuradas de estiramiento de solo lectura basadas en ejercicios reales de la BD")
+        .Produces<List<RoutineDto>>(StatusCodes.Status200OK);
+
+        group.MapPost("/stretching/templates/{templateKey}/clone", async (string templateKey, ClaimsPrincipal user, IRoutineService routineService, CancellationToken cancellationToken) =>
+        {
+            var userId = user.GetUserId();
+            var cloned = await routineService.CloneStretchingTemplateAsync(templateKey, userId, cancellationToken);
+            return Results.Created($"/api/routines/{cloned.Id}", cloned);
+        })
+        .WithName("CloneStretchingTemplate")
+        .WithSummary("Crea una copia editable de una plantilla de estiramiento para el usuario")
+        .Produces<RoutineDto>(StatusCodes.Status201Created)
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
         group.MapGet("/{id:guid}", async (Guid id, ClaimsPrincipal user, IRoutineService routineService, CancellationToken cancellationToken) =>
         {
             var userId = user.GetUserId();
@@ -51,6 +71,39 @@ public static class RoutineEndpoints
         .WithName("CreateRoutine")
         .WithSummary("Crea una nueva rutina con sus ejercicios asociados")
         .Produces<RoutineDto>(StatusCodes.Status201Created)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/ai/generate", async (
+            GenerateAiRoutineRequestDto dto,
+            IRoutineAiService routineAiService,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = user.GetUserId();
+            var result = await routineAiService.GenerateRoutineAsync(userId, dto, cancellationToken);
+            return Results.Ok(result);
+        })
+        .AddEndpointFilter<ValidationFilter<GenerateAiRoutineRequestDto>>()
+        .RequireRateLimiting("AiPolicy")
+        .WithName("GenerateAiRoutine")
+        .WithSummary("Genera una rutina personalizada con IA usando exclusivamente ejercicios del catálogo de la base de datos")
+        .Produces<GeneratedAiRoutineResponseDto>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/ai/swap-exercise", async (
+            SwapAiExerciseRequestDto dto,
+            IRoutineAiService routineAiService,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = user.GetUserId();
+            var result = await routineAiService.SwapExerciseAsync(userId, dto, cancellationToken);
+            return Results.Ok(result);
+        })
+        .RequireRateLimiting("AiPolicy")
+        .WithName("SwapAiRoutineExercise")
+        .WithSummary("Reemplaza un ejercicio específico de una rutina generada por IA por un equivalente real de la BD")
+        .Produces<GeneratedAiRoutineExerciseDto>(StatusCodes.Status200OK)
         .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         group.MapPut("/{id:guid}", async (Guid id, CreateRoutineDto dto, ClaimsPrincipal user, IRoutineService routineService, CancellationToken cancellationToken) =>

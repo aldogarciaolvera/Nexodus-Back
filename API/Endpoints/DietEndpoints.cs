@@ -54,6 +54,16 @@ public static class DietEndpoints
         .Produces<CalculatedTargetResponseDto>(StatusCodes.Status200OK)
         .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
+        group.MapGet("/budget-summary", async (IDietService service, ClaimsPrincipal user, CancellationToken ct) =>
+        {
+            var userId = user.GetUserId();
+            var summary = await service.GetFoodBudgetSummaryAsync(userId, ct);
+            return Results.Ok(summary);
+        })
+        .WithName("GetFoodBudgetSummary")
+        .WithSummary("Obtiene el resumen del presupuesto de comidas sincronizado con gastos de Finanzas")
+        .Produces<FoodBudgetSummaryDto>(StatusCodes.Status200OK);
+
         #endregion
 
         #region Meals & Daily Summary
@@ -109,6 +119,26 @@ public static class DietEndpoints
 
         #region Foods
 
+        group.MapGet("/categories", async (IDietService service, CancellationToken ct) =>
+        {
+            var categories = await service.GetFoodCategoriesAsync(ct);
+            return Results.Ok(categories);
+        })
+        .AllowAnonymous()
+        .WithName("GetFoodCategories")
+        .WithSummary("Obtiene el listado de conceptos y categorías predefinidas del sistema para alimentos")
+        .Produces<List<Nexodus_Back.Application.DTOs.Category.CategoryDto>>(StatusCodes.Status200OK);
+
+        group.MapGet("/foods/categories", async (IDietService service, CancellationToken ct) =>
+        {
+            var categories = await service.GetFoodCategoriesAsync(ct);
+            return Results.Ok(categories);
+        })
+        .AllowAnonymous()
+        .WithName("GetFoodCategoriesLegacy")
+        .WithSummary("Alias para obtener categorías predefinidas de alimentos")
+        .Produces<List<Nexodus_Back.Application.DTOs.Category.CategoryDto>>(StatusCodes.Status200OK);
+
         group.MapGet("/foods/search", async (string? query, int? page, int? pageSize, IDietService service, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
@@ -119,9 +149,10 @@ public static class DietEndpoints
         .WithSummary("Busca alimentos en el catálogo por nombre o marca con soporte de paginación")
         .Produces<FoodSearchResponseDto>(StatusCodes.Status200OK);
 
-        group.MapGet("/foods/barcode/{barcode}", async (string barcode, IDietService service, CancellationToken ct) =>
+        group.MapGet("/foods/barcode/{barcode:regex(^[0-9A-Za-z-]{{4,32}}$)}", async (string barcode, IDietService service, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var food = await service.GetFoodByBarcodeAsync(barcode, ct);
+            var userId = user.GetUserId();
+            var food = await service.GetFoodByBarcodeAsync(barcode, userId, ct);
             return Results.Ok(food);
         })
         .WithName("GetFoodByBarcode")
@@ -140,6 +171,19 @@ public static class DietEndpoints
         .WithSummary("Permite registrar un alimento personalizado creado por el usuario")
         .Produces<FoodItemDto>(StatusCodes.Status201Created)
         .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+        group.MapPut("/foods/{id:guid}", async (Guid id, CreateFoodItemDto dto, IDietService service, ClaimsPrincipal user, CancellationToken ct) =>
+        {
+            var userId = user.GetUserId();
+            var updated = await service.UpdateFoodAsync(id, userId, dto, ct);
+            return Results.Ok(updated);
+        })
+        .AddEndpointFilter<ValidationFilter<CreateFoodItemDto>>()
+        .WithName("UpdateFood")
+        .WithSummary("Actualiza un alimento personalizado existente o genera una copia personalizada si es del sistema")
+        .Produces<FoodItemDto>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound);
 
         #endregion
 
@@ -215,6 +259,22 @@ public static class DietEndpoints
         .WithName("StopFasting")
         .WithSummary("Concluye el bloque de ayuno activo y abre la ventana de ingesta")
         .Produces<FastingStatusDto>(StatusCodes.Status200OK);
+
+        #endregion
+
+        #region Nexodus Lens (AI Multimodal Vision)
+
+        group.MapPost("/lens/analyze", async (AnalyzeFoodImageRequestDto dto, IGeminiVisionService visionService, CancellationToken ct) =>
+        {
+            var result = await visionService.AnalyzeMealImageAsync(dto.Base64Image, dto.MimeType, dto.AdditionalContext, dto.Hint, ct);
+            return Results.Ok(result);
+        })
+        .RequireRateLimiting("AiPolicy")
+        .AddEndpointFilter<ValidationFilter<AnalyzeFoodImageRequestDto>>()
+        .WithName("AnalyzeMealLens")
+        .WithSummary("Analiza visualmente una fotografía de comida mediante Google Gemini Vision para estimar platillos, porciones, calorías y macros")
+        .Produces<FoodAnalysisResultDto>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
         #endregion
     }

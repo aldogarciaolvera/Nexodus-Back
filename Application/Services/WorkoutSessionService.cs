@@ -19,12 +19,16 @@ public class WorkoutSessionService(
     IWorkoutSessionRepository sessionRepository,
     IRoutineRepository routineRepository,
     IExerciseRepository exerciseRepository,
-    IUserRepository userRepository) : IWorkoutSessionService
+    IUserRepository userRepository,
+    IGamificationService gamificationService,
+    IHabitService habitService) : IWorkoutSessionService
 {
     private readonly IWorkoutSessionRepository _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
     private readonly IRoutineRepository _routineRepository = routineRepository ?? throw new ArgumentNullException(nameof(routineRepository));
     private readonly IExerciseRepository _exerciseRepository = exerciseRepository ?? throw new ArgumentNullException(nameof(exerciseRepository));
     private readonly IUserRepository _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+    private readonly IGamificationService _gamificationService = gamificationService ?? throw new ArgumentNullException(nameof(gamificationService));
+    private readonly IHabitService _habitService = habitService ?? throw new ArgumentNullException(nameof(habitService));
 
     public async Task<WorkoutSessionDto> StartSessionAsync(StartWorkoutSessionDto dto, Guid userId, CancellationToken cancellationToken = default)
     {
@@ -64,7 +68,6 @@ public class WorkoutSessionService(
         // Si se inició desde una rutina, precargamos los ejercicios y series planificadas
         if (routine?.RoutineExercises != null && routine.RoutineExercises.Count != 0)
         {
-            int globalOrder = 1;
             foreach (var re in routine.RoutineExercises)
             {
                 for (int s = 1; s <= re.Sets; s++)
@@ -74,7 +77,7 @@ public class WorkoutSessionService(
                         Id = Guid.NewGuid(),
                         WorkoutSessionId = session.Id,
                         ExerciseId = re.ExerciseId,
-                        SetOrder = globalOrder++,
+                        SetOrder = s,
                         Type = SetType.Normal,
                         WeightKg = re.Weight,
                         Reps = re.Reps,
@@ -134,28 +137,30 @@ public class WorkoutSessionService(
 
         double calculated1Rm = CalculateOneRepMax(dto.WeightKg, dto.Reps);
 
-        WorkoutSet setEntity;
+        WorkoutSet? setEntity = null;
 
         if (dto.SetId.HasValue && dto.SetId.Value != Guid.Empty)
         {
-            var existingSet = await _sessionRepository.GetSetByIdAsync(dto.SetId.Value, cancellationToken);
-            if (existingSet == null || existingSet.WorkoutSessionId != sessionId)
-            {
-                throw new NotFoundException($"No se encontró la serie con ID '{dto.SetId.Value}' dentro de esta sesión.");
-            }
+            setEntity = session.Sets?.FirstOrDefault(s => s.Id == dto.SetId.Value) 
+                ?? await _sessionRepository.GetSetByIdAsync(dto.SetId.Value, cancellationToken);
+        }
 
-            existingSet.SetOrder = dto.SetOrder;
-            existingSet.Type = dto.Type;
-            existingSet.WeightKg = dto.WeightKg;
-            existingSet.Reps = dto.Reps;
-            existingSet.Rpe = dto.Rpe;
-            existingSet.DurationSeconds = dto.DurationSeconds;
-            existingSet.CalculatedOneRepMax = calculated1Rm;
-            existingSet.IsCompleted = dto.IsCompleted;
-            existingSet.CompletedAt = dto.IsCompleted ? (existingSet.CompletedAt ?? DateTime.UtcNow) : null;
+        // Si no se encontró por SetId, buscar por ejercicio y orden en la sesión actual
+        setEntity ??= session.Sets?.FirstOrDefault(s => s.ExerciseId == dto.ExerciseId && s.SetOrder == dto.SetOrder);
 
-            await _sessionRepository.UpdateSetAsync(existingSet, cancellationToken);
-            setEntity = existingSet;
+        if (setEntity != null && setEntity.WorkoutSessionId == sessionId)
+        {
+            setEntity.SetOrder = dto.SetOrder;
+            setEntity.Type = dto.Type;
+            setEntity.WeightKg = dto.WeightKg;
+            setEntity.Reps = dto.Reps;
+            setEntity.Rpe = dto.Rpe;
+            setEntity.DurationSeconds = dto.DurationSeconds;
+            setEntity.CalculatedOneRepMax = calculated1Rm;
+            setEntity.IsCompleted = dto.IsCompleted;
+            setEntity.CompletedAt = dto.IsCompleted ? (setEntity.CompletedAt ?? DateTime.UtcNow) : null;
+
+            await _sessionRepository.UpdateSetAsync(setEntity, cancellationToken);
         }
         else
         {
@@ -254,6 +259,26 @@ public class WorkoutSessionService(
         session.XpEarned = 50 + (int)(session.TotalVolumeKg / 100.0);
 
         await _sessionRepository.UpdateAsync(session, cancellationToken);
+
+        // Registro de actividad y progreso de racha en The Nexodus Protocol
+        await _gamificationService.RecordActivityAsync(
+            userId,
+            "Workout",
+            baseNxp: 50,
+            bonusNxp: (int)(session.TotalVolumeKg / 100.0),
+            cancellationToken: cancellationToken
+        );
+
+        // Sinergia automática con hábitos vinculados a WorkoutSession
+        try
+        {
+            await _habitService.HandleAutoCompleteTriggerAsync(userId, "WorkoutSession", 1.0, cancellationToken);
+        }
+        catch
+        {
+            // Fail-safe: No interrumpir la finalización de la sesión si el cálculo de hábitos falla
+        }
+
         return MapToDto(session);
     }
 
@@ -280,8 +305,13 @@ public class WorkoutSessionService(
         {
             foreach (var set in sess.Sets.Where(s => s.IsCompleted && s.Exercise != null))
             {
-                var muscle = NormalizeMuscleGroup(set.Exercise.Muscle ?? set.Exercise.BodyPart);
-                if (!string.IsNullOrEmpty(muscle))
+                var muscle = NormalizeMuscleGroup(set.Exercise.Muscle);
+                if (muscle == "Otros" && !string.IsNullOrEmpty(set.Exercise.BodyPart))
+                {
+                    muscle = NormalizeMuscleGroup(set.Exercise.BodyPart);
+                }
+
+                if (!string.IsNullOrEmpty(muscle) && muscle != "Otros")
                 {
                     var time = set.CompletedAt ?? sess.EndTime ?? sess.StartTime;
                     if (!muscleLastTrained.TryGetValue(muscle, out var lastTime) || time > lastTime)
@@ -377,13 +407,42 @@ public class WorkoutSessionService(
     {
         if (string.IsNullOrWhiteSpace(raw)) return "Otros";
         string lower = raw.Trim().ToLowerInvariant();
-        if (lower.Contains("chest") || lower.Contains("pecho") || lower.Contains("pectoral")) return "Pecho";
-        if (lower.Contains("back") || lower.Contains("espalda") || lower.Contains("lat") || lower.Contains("dorsal")) return "Espalda";
-        if (lower.Contains("shoulder") || lower.Contains("hombro") || lower.Contains("deltoid")) return "Hombros";
-        if (lower.Contains("bicep") || lower.Contains("bíceps") || lower.Contains("brazo")) return "Bíceps";
-        if (lower.Contains("tricep") || lower.Contains("tríceps")) return "Tríceps";
-        if (lower.Contains("leg") || lower.Contains("quad") || lower.Contains("pierna") || lower.Contains("glute") || lower.Contains("hamstring")) return "Piernas";
-        if (lower.Contains("abs") || lower.Contains("core") || lower.Contains("abdominal")) return "Core";
+
+        // Pecho
+        if (lower.Contains("chest") || lower.Contains("pecho") || lower.Contains("pectoral"))
+            return "Pecho";
+
+        // Espalda
+        if (lower.Contains("back") || lower.Contains("espalda") || lower.Contains("lat") || lower.Contains("dorsal") ||
+            lower.Contains("trap") || lower.Contains("spine") || lower.Contains("scapulae"))
+            return "Espalda";
+
+        // Hombros
+        if (lower.Contains("shoulder") || lower.Contains("hombro") || lower.Contains("delt"))
+            return "Hombros";
+
+        // Bíceps / Brazos / Antebrazos
+        if (lower.Contains("bicep") || lower.Contains("bíceps") || lower.Contains("braquial") ||
+            lower.Contains("forearm") || lower.Contains("antebrazo") || lower.Contains("arm"))
+            return "Bíceps";
+
+        // Tríceps
+        if (lower.Contains("tricep") || lower.Contains("tríceps"))
+            return "Tríceps";
+
+        // Piernas
+        if (lower.Contains("leg") || lower.Contains("pierna") || lower.Contains("quad") || lower.Contains("cuádricep") ||
+            lower.Contains("glute") || lower.Contains("glúteo") || lower.Contains("hamstring") || lower.Contains("femoral") ||
+            lower.Contains("calf") || lower.Contains("calves") || lower.Contains("pantorrilla") || lower.Contains("gemelo") ||
+            lower.Contains("abductor") || lower.Contains("adductor"))
+            return "Piernas";
+
+        // Core / Abdomen
+        if (lower.Contains("abs") || lower.Contains("core") || lower.Contains("abdominal") ||
+            lower.Contains("oblique") || lower.Contains("oblicuo") || lower.Contains("waist") ||
+            lower.Contains("cintura") || lower.Contains("serratus"))
+            return "Core";
+
         return "Otros";
     }
 

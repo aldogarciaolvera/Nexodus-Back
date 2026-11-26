@@ -30,6 +30,14 @@ public class ExerciseRepository(NexodusDbContext context) : IExerciseRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<Exercise>> GetAllCatalogAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Exercises
+            .AsNoTracking()
+            .OrderBy(e => e.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Exercise?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Exercises

@@ -12,7 +12,9 @@ public static class AuthEndpoints
 {
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/auth").WithTags("Auth");
+        var group = app.MapGroup("/api/auth")
+            .WithTags("Auth")
+            .RequireRateLimiting("AuthPolicy");
 
         group.MapPost("/register", async (RegisterRequest request, IAuthService authService) =>
         {
@@ -43,9 +45,22 @@ public static class AuthEndpoints
             var response = await authService.RefreshTokenAsync(request);
             return Results.Ok(ApiResponse<AuthResponse>.Success(response));
         })
+        .AddEndpointFilter<ValidationFilter<RefreshTokenRequest>>()
         .WithName("RefreshToken")
         .WithSummary("Renueva el JWT expirado utilizando un Refresh Token activo")
         .Produces<ApiResponse<AuthResponse>>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/logout", async (RevokeTokenRequest request, IAuthService authService, CancellationToken ct) =>
+        {
+            await authService.LogoutAsync(request.RefreshToken, ct);
+            return Results.Ok(ApiResponse<string>.Success("Sesión cerrada exitosamente y refresh token revocado."));
+        })
+        .AddEndpointFilter<ValidationFilter<RevokeTokenRequest>>()
+        .WithName("Logout")
+        .WithSummary("Revoca el Refresh Token activo y cierra la sesión del usuario")
+        .Produces<ApiResponse<string>>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest);
     }
 }

@@ -9,6 +9,8 @@ public class FoodItemDto
     public string Name { get; set; } = string.Empty;
     public string? Brand { get; set; }
     public string? Barcode { get; set; }
+    public Guid? CategoryId { get; set; }
+    public string? Category { get; set; }
     public double ServingSize { get; set; } // e.g. 100
     public string ServingUnit { get; set; } = "g"; // "g", "ml", "unit"
     public double Calories { get; set; }
@@ -26,6 +28,8 @@ public class CreateFoodItemDto
     public string Name { get; set; } = string.Empty;
     public string? Brand { get; set; }
     public string? Barcode { get; set; }
+    public Guid? CategoryId { get; set; }
+    public string? Category { get; set; }
     public double ServingSize { get; set; } = 100;
     public string ServingUnit { get; set; } = "g";
     public double Calories { get; set; }

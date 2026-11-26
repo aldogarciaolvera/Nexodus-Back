@@ -79,6 +79,132 @@ public static class DataSeeder
         logger?.LogInformation("DataSeeder: {Count} ejercicios insertados exitosamente.", exercisesToInsert.Count);
     }
 
+    public static async Task SeedStretchingExercisesAsync(NexodusDbContext context, ILogger? logger = null)
+    {
+        var existingExternalIds = await context.Exercises
+            .Where(e => e.Category == "stretching")
+            .Select(e => e.ExternalId)
+            .ToListAsync();
+
+        var existingSet = new HashSet<string>(existingExternalIds, StringComparer.OrdinalIgnoreCase);
+
+        var stretchingCatalog = new List<Exercise>
+        {
+            new() { ExternalId = "stretching/neck-side-stretch", Name = "Estiramiento Lateral de Cuello", BodyPart = "neck", Muscle = "neck", Equipment = "bodyweight", Category = "stretching", Instructions = "Inclina suavemente la cabeza hacia un hombro manteniendo el hombro opuesto relajado.\nRespira profundo y sostén sin forzar." },
+            new() { ExternalId = "stretching/cross-body-shoulder-stretch", Name = "Estiramiento de Hombro Cruzado", BodyPart = "shoulders", Muscle = "delts", Equipment = "bodyweight", Category = "stretching", Instructions = "Cruza un brazo por delante del pecho y presiona suavemente por encima del codo con la otra mano.\nMantén el hombro alejado de la oreja." },
+            new() { ExternalId = "stretching/chest-doorway-opener", Name = "Apertura de Pecho y Pectoral", BodyPart = "chest", Muscle = "pectorals", Equipment = "bodyweight", Category = "stretching", Instructions = "Apoya el antebrazo en una pared o marco a 90 grados y gira suavemente el torso hacia el lado contrario hasta sentir estiramiento en el pecho." },
+            new() { ExternalId = "stretching/childs-pose", Name = "Postura del Niño (Child's Pose)", BodyPart = "back", Muscle = "lats", Equipment = "bodyweight", Category = "stretching", Instructions = "Arrodíllate, lleva los glúteos hacia los talones y extiende los brazos al frente sobre el suelo.\nRelaja la frente hacia el piso y respira lento." },
+            new() { ExternalId = "stretching/cat-cow-mobility", Name = "Gato-Vaca (Movilidad Espinal)", BodyPart = "back", Muscle = "spine", Equipment = "bodyweight", Category = "stretching", Instructions = "En cuatro puntos, alterna lentamente entre arquear la espalda inhalando y redondearla exhalando." },
+            new() { ExternalId = "stretching/supine-spinal-twist", Name = "Torsión Espinal Supina", BodyPart = "back", Muscle = "spine", Equipment = "bodyweight", Category = "stretching", Instructions = "Acostado boca arriba, lleva una rodilla cruzada hacia el lado opuesto manteniendo ambos hombros cerca del suelo." },
+            new() { ExternalId = "stretching/kneeling-lat-stretch", Name = "Estiramiento de Dorsal en Rodillas", BodyPart = "back", Muscle = "lats", Equipment = "bodyweight", Category = "stretching", Instructions = "Con los brazos extendidos al frente apoyados en un banco o el piso, baja el pecho hacia el suelo manteniendo la espalda larga." },
+            new() { ExternalId = "stretching/pigeon-pose", Name = "Postura de la Paloma (Glúteo y Cadera)", BodyPart = "upper legs", Muscle = "glutes", Equipment = "bodyweight", Category = "stretching", Instructions = "Lleva una pierna flexionada al frente y extiende la otra hacia atrás.\nMantén las caderas niveladas e inclina el torso suavemente." },
+            new() { ExternalId = "stretching/kneeling-hip-flexor", Name = "Estiramiento de Flexor de Cadera", BodyPart = "upper legs", Muscle = "quads", Equipment = "bodyweight", Category = "stretching", Instructions = "En posición de zancada con una rodilla apoyada, contrae el glúteo trasero y desplaza la cadera hacia adelante sin arquear la zona lumbar." },
+            new() { ExternalId = "stretching/figure-four-glute", Name = "Estiramiento Figura 4 (Piriforme)", BodyPart = "upper legs", Muscle = "glutes", Equipment = "bodyweight", Category = "stretching", Instructions = "Acostado boca arriba, cruza un tobillo sobre la rodilla opuesta y acerca suavemente el muslo hacia el pecho." },
+            new() { ExternalId = "stretching/seated-butterfly", Name = "Mariposa Sentada (Aductores)", BodyPart = "upper legs", Muscle = "adductors", Equipment = "bodyweight", Category = "stretching", Instructions = "Siéntate juntando las plantas de los pies y deja caer las rodillas hacia los lados manteniendo la espalda erguida." },
+            new() { ExternalId = "stretching/seated-hamstring-stretch", Name = "Estiramiento de Isquiotibiales Sentado", BodyPart = "upper legs", Muscle = "hamstrings", Equipment = "bodyweight", Category = "stretching", Instructions = "Sentado con una pierna extendida, inclina el torso desde la cadera con espalda recta hacia el pie." },
+            new() { ExternalId = "stretching/standing-quad-stretch", Name = "Estiramiento de Cuádriceps de Pie", BodyPart = "upper legs", Muscle = "quads", Equipment = "bodyweight", Category = "stretching", Instructions = "De pie, sujeta el empeine detrás del glúteo manteniendo las rodillas juntas y la pelvis neutra." },
+            new() { ExternalId = "stretching/downward-dog", Name = "Perro Boca Abajo (Cadena Posterior)", BodyPart = "lower legs", Muscle = "calves", Equipment = "bodyweight", Category = "stretching", Instructions = "Eleva las caderas formando una V invertida, empuja los talones suavemente hacia el suelo y alarga la espalda." },
+            new() { ExternalId = "stretching/wall-calf-stretch", Name = "Estiramiento de Gemelos en Pared", BodyPart = "lower legs", Muscle = "calves", Equipment = "bodyweight", Category = "stretching", Instructions = "Apoya las manos en una pared, lleva una pierna atrás totalmente extendida y presiona el talón contra el suelo." },
+            new() { ExternalId = "stretching/wrist-flexor-stretch", Name = "Estiramiento de Muñecas y Antebrazos", BodyPart = "lower arms", Muscle = "forearms", Equipment = "bodyweight", Category = "stretching", Instructions = "Extiende un brazo al frente con la palma hacia arriba y tira suavemente de los dedos hacia abajo con la otra mano." }
+        };
+
+        var toInsert = stretchingCatalog.Where(e => !existingSet.Contains(e.ExternalId)).ToList();
+        if (toInsert.Count == 0) return;
+
+        await context.Exercises.AddRangeAsync(toInsert);
+        await context.SaveChangesAsync();
+        logger?.LogInformation("DataSeeder: {Count} ejercicios de estiramiento insertados exitosamente.", toInsert.Count);
+    }
+
+    public static async Task SeedFoodCategoriesAsync(NexodusDbContext context, ILogger? logger = null)
+    {
+        // 1. Asegurar que las categorías de comida existan
+        var existingCategories = await context.Categories
+            .Where(c => c.Type == "Food")
+            .ToListAsync();
+
+        var systemCategories = new (string Name, string Description)[]
+        {
+            ("Carnes", "Carne de res, pollo, pavo, cerdo y carnes rojas o blancas"),
+            ("Pescados y Mariscos", "Pescados blancos, salmón, atún, camarones y mariscos"),
+            ("Verduras", "Verduras, hortalizas y vegetales frescos o cocidos"),
+            ("Frutas", "Frutas frescas, bayas, plátanos, manzanas y cítricos"),
+            ("Lácteos y Huevos", "Huevos, leche, quesos, yogur griego y requesón"),
+            ("Cereales y Granos", "Arroz, avena, pasta, pan integral, quinoa y cereales"),
+            ("Legumbres", "Frijoles, lentejas, garbanzos, soya y habas"),
+            ("Frutos Secos y Semillas", "Nueces, almendras, cacahuates, chía y linaza"),
+            ("Grasas y Aceites", "Aceite de oliva, aguacate, mantequilla y aceites saludables"),
+            ("Bebidas", "Agua, café, té, infusiones y bebidas sin azúcar"),
+            ("Suplementos", "Proteína en polvo (whey), creatina, multivitaminas y aminoácidos"),
+            ("Snacks y Dulces", "Barras de proteína, botanas, galletas y chocolates"),
+            ("Otros", "Condimentos, especias, aderezos y alimentos varios")
+        };
+
+        var now = DateTime.UtcNow;
+        var toInsert = new List<Category>();
+
+        foreach (var (name, desc) in systemCategories)
+        {
+            var found = existingCategories.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (found == null)
+            {
+                var newCat = new Category
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = null,
+                    Name = name,
+                    Description = desc,
+                    Type = "Food",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                toInsert.Add(newCat);
+                existingCategories.Add(newCat);
+            }
+        }
+
+        if (toInsert.Count > 0)
+        {
+            await context.Categories.AddRangeAsync(toInsert);
+            await context.SaveChangesAsync();
+            logger?.LogInformation("DataSeeder: {Count} categorías de comida insertadas exitosamente.", toInsert.Count);
+        }
+
+        // 2. Asociar categorías a los alimentos existentes que tengan Category null
+        var foodsWithoutCategory = await context.Foods
+            .Where(f => f.CategoryId == null && string.IsNullOrEmpty(f.Category))
+            .ToListAsync();
+
+        if (foodsWithoutCategory.Count > 0)
+        {
+            var catMap = existingCategories.ToDictionary(c => c.Name.ToLower(), c => c);
+
+            foreach (var food in foodsWithoutCategory)
+            {
+                var n = food.Name.ToLower();
+                string targetCat = "Otros";
+
+                if (n.Contains("pollo") || n.Contains("res") || n.Contains("carne") || n.Contains("cerdo")) targetCat = "Carnes";
+                else if (n.Contains("atún") || n.Contains("salmón") || n.Contains("pescado") || n.Contains("marisco")) targetCat = "Pescados y Mariscos";
+                else if (n.Contains("huevo") || n.Contains("yogur") || n.Contains("leche") || n.Contains("queso")) targetCat = "Lácteos y Huevos";
+                else if (n.Contains("arroz") || n.Contains("avena") || n.Contains("pan") || n.Contains("pasta") || n.Contains("grano")) targetCat = "Cereales y Granos";
+                else if (n.Contains("manzana") || n.Contains("plátano") || n.Contains("fruta") || n.Contains("fresa")) targetCat = "Frutas";
+                else if (n.Contains("aguacate") || n.Contains("aceite")) targetCat = "Grasas y Aceites";
+                else if (n.Contains("proteína") || n.Contains("whey") || n.Contains("creatina")) targetCat = "Suplementos";
+                else if (n.Contains("clorets") || n.Contains("dulce") || n.Contains("snack")) targetCat = "Snacks y Dulces";
+
+                if (catMap.TryGetValue(targetCat.ToLower(), out var catObj))
+                {
+                    food.CategoryId = catObj.Id;
+                    food.Category = catObj.Name;
+                }
+            }
+
+            await context.SaveChangesAsync();
+            logger?.LogInformation("DataSeeder: {Count} alimentos existentes actualizados con su categoría.", foodsWithoutCategory.Count);
+        }
+    }
+
     public static async Task SeedFoodsAsync(NexodusDbContext context, ILogger? logger = null)
     {
         if (await context.Foods.AnyAsync())
@@ -105,5 +231,156 @@ public static class DataSeeder
         await context.Foods.AddRangeAsync(defaultFoods);
         await context.SaveChangesAsync();
         logger?.LogInformation("DataSeeder: {Count} alimentos base insertados exitosamente.", defaultFoods.Count);
+    }
+
+    public static async Task SeedRecipesAsync(NexodusDbContext context, ILogger? logger = null)
+    {
+        if (await context.Recipes.AnyAsync())
+        {
+            return; // Ya hay recetas en la base de datos
+        }
+
+        var baseRecipes = new List<Recipe>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                UserId = null,
+                Name = "Bowl Mediterráneo de Pollo y Arroz",
+                Description = "Plato completo alto en proteína y carbohidratos complejos, perfecto para comidas post-entrenamiento.",
+                MealType = "Lunch",
+                DietType = "HighProtein",
+                PrepTimeMinutes = 10,
+                CookTimeMinutes = 20,
+                Servings = 1,
+                TotalCalories = 585,
+                TotalProtein = 51,
+                TotalCarbs = 47,
+                TotalFat = 21,
+                Difficulty = "Easy",
+                IsCommunity = true,
+                Tags = "[\"PostWorkout\",\"AltoEnProteína\",\"Fácil\"]",
+                ImageUrl = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+                Ingredients =
+                [
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Pechuga de pollo", CookingState = "Grilled", Quantity = 150, Unit = "g", Calories = 247, Protein = 46.5, Carbs = 0, Fat = 5.4 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Arroz blanco", CookingState = "Boiled", Quantity = 150, Unit = "g", Calories = 195, Protein = 4.0, Carbs = 42.3, Fat = 0.5 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Aguacate Hass", CookingState = "Raw", Quantity = 50, Unit = "g", Calories = 80, Protein = 1.0, Carbs = 4.2, Fat = 7.3 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Aceite de oliva virgen extra", CookingState = "Raw", Quantity = 7, Unit = "g", Calories = 63, Protein = 0, Carbs = 0, Fat = 7.0 }
+                ],
+                Steps =
+                [
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 1, Instruction = "Cocer el arroz blanco al vapor con un toque de sal." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 2, Instruction = "Salpimentar la pechuga de pollo y sellar a la plancha a fuego medio-alto 5 minutos por lado." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 3, Instruction = "Cortar el aguacate en láminas." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 4, Instruction = "Servir el arroz de base en un bowl, montar el pollo en tiras, el aguacate y aderezar con el aceite de oliva." }
+                ]
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                UserId = null,
+                Name = "Omelette Fitness con Espinacas y Queso",
+                Description = "Desayuno cetogénico y proteico rápido de preparar con claras, huevo entero y verduras frescas.",
+                MealType = "Breakfast",
+                DietType = "HighProtein",
+                PrepTimeMinutes = 5,
+                CookTimeMinutes = 8,
+                Servings = 1,
+                TotalCalories = 335,
+                TotalProtein = 32,
+                TotalCarbs = 4,
+                TotalFat = 20,
+                Difficulty = "Easy",
+                IsCommunity = true,
+                Tags = "[\"Desayuno\",\"Keto\",\"Rápido\"]",
+                ImageUrl = "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80",
+                Ingredients =
+                [
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Huevo entero", CookingState = "Fried", Quantity = 100, Unit = "g", Calories = 155, Protein = 13.0, Carbs = 1.1, Fat = 11.0 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Claras de huevo", CookingState = "Fried", Quantity = 100, Unit = "g", Calories = 52, Protein = 11.0, Carbs = 0.7, Fat = 0.2 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Queso panela", CookingState = "Raw", Quantity = 40, Unit = "g", Calories = 110, Protein = 7.5, Carbs = 1.2, Fat = 8.5 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Espinaca tierna", CookingState = "Raw", Quantity = 40, Unit = "g", Calories = 9, Protein = 1.1, Carbs = 1.4, Fat = 0.1 }
+                ],
+                Steps =
+                [
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 1, Instruction = "Batir los huevos enteros junto a las claras con una pizca de sal marina." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 2, Instruction = "Verter la mezcla en una sartén antiadherente precalentada con spray de oliva." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 3, Instruction = "Colocar las espinacas y el queso panela en cubos sobre la mitad del omelette." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 4, Instruction = "Plegar por la mitad con espátula y dejar dorar por 1 minuto más." }
+                ]
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                UserId = null,
+                Name = "Avena Nocturna Proteica con Plátano",
+                Description = "Desayuno que se deja listo desde la noche anterior; saciante, dulce natural y rico en fibra.",
+                MealType = "Breakfast",
+                DietType = "Standard",
+                PrepTimeMinutes = 5,
+                CookTimeMinutes = 0,
+                Servings = 1,
+                TotalCalories = 430,
+                TotalProtein = 35,
+                TotalCarbs = 62,
+                TotalFat = 5.5,
+                Difficulty = "Easy",
+                IsCommunity = true,
+                Tags = "[\"Prep\",\"Dulce\",\"Fibra\"]",
+                ImageUrl = "https://images.unsplash.com/photo-1517673132405-a56a62b18caf?auto=format&fit=crop&w=800&q=80",
+                Ingredients =
+                [
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Avena en hojuelas", CookingState = "Raw", Quantity = 50, Unit = "g", Calories = 195, Protein = 8.5, Carbs = 33.2, Fat = 3.5 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Proteína Whey Vainilla", CookingState = "Raw", Quantity = 30, Unit = "g", Calories = 120, Protein = 24.0, Carbs = 3.0, Fat = 1.5 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Plátano maduro", CookingState = "Raw", Quantity = 80, Unit = "g", Calories = 71, Protein = 0.9, Carbs = 18.2, Fat = 0.2 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Leche vegetal sin azúcar", CookingState = "Raw", Quantity = 150, Unit = "ml", Calories = 45, Protein = 1.5, Carbs = 4.0, Fat = 1.2 }
+                ],
+                Steps =
+                [
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 1, Instruction = "En un tarro hermético, mezclar la avena en hojuelas con el scoop de proteína whey." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 2, Instruction = "Verter la leche vegetal y mezclar vigorosamente con una cuchara hasta disolver grumos." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 3, Instruction = "Tapar y guardar en el refrigerador durante al menos 4 horas (idealmente toda la noche)." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 4, Instruction = "Por la mañana, destapar y decorar con las rodajas de plátano fresco." }
+                ]
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                UserId = null,
+                Name = "Salmón a la Plancha con Papas Asadas",
+                Description = "Cena gourmet saludable rica en ácidos grasos Omega-3 y micronutrientes para regeneración celular.",
+                MealType = "Dinner",
+                DietType = "Standard",
+                PrepTimeMinutes = 10,
+                CookTimeMinutes = 20,
+                Servings = 1,
+                TotalCalories = 515,
+                TotalProtein = 42,
+                TotalCarbs = 31,
+                TotalFat = 23,
+                Difficulty = "Medium",
+                IsCommunity = true,
+                Tags = "[\"Omega3\",\"CenaSaludable\",\"Antiinflamatorio\"]",
+                ImageUrl = "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80",
+                Ingredients =
+                [
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Filete de salmón fresco", CookingState = "Grilled", Quantity = 180, Unit = "g", Calories = 370, Protein = 39.6, Carbs = 0, Fat = 21.6 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Papas cocidas", CookingState = "Boiled", Quantity = 150, Unit = "g", Calories = 130, Protein = 2.8, Carbs = 29.5, Fat = 0.2 },
+                    new RecipeIngredient { Id = Guid.NewGuid(), CustomFoodName = "Aceite de oliva", CookingState = "Grilled", Quantity = 5, Unit = "g", Calories = 45, Protein = 0, Carbs = 0, Fat = 5.0 }
+                ],
+                Steps =
+                [
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 1, Instruction = "Cortar las papas en gajos y cocerlas ligeramente o dorarlas en sartén/airfryer con especias." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 2, Instruction = "Sazonar el filete de salmón con sal, pimienta negra y unas gotas de limón." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 3, Instruction = "Cocinar el salmón en sartén con el aceite de oliva durante 4 minutos del lado de la piel y 3 minutos del otro lado." },
+                    new RecipeStep { Id = Guid.NewGuid(), StepNumber = 4, Instruction = "Emplatar el salmón crujiente acompañado de las papas asadas calientes." }
+                ]
+            }
+        };
+
+        await context.Recipes.AddRangeAsync(baseRecipes);
+        await context.SaveChangesAsync();
+        logger?.LogInformation("DataSeeder: {Count} recetas base insertadas exitosamente.", baseRecipes.Count);
     }
 }

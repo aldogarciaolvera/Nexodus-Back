@@ -13,7 +13,7 @@ public interface IFinanceService
 {
     Task<FinanceDto> CreateAsync(Guid userId, CreateFinanceRequest request, CancellationToken cancellationToken = default);
     Task<FinanceDto> GetByIdAsync(Guid userId, Guid id, CancellationToken cancellationToken = default);
-    Task<IEnumerable<FinanceDto>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<FinanceDto>> GetAllByUserIdAsync(Guid userId, int? page = null, int? pageSize = null, CancellationToken cancellationToken = default);
     Task<FinanceSummaryDto> GetSummaryAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<FinanceDto> UpdateAsync(Guid userId, Guid id, UpdateFinanceRequest request, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid userId, Guid id, CancellationToken cancellationToken = default);

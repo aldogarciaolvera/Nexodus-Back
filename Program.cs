@@ -1,8 +1,11 @@
 using System.Text;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Amazon.S3;
 using DotNetEnv;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -26,7 +29,8 @@ Env.Load();
 // Configure Database
 var connectionString = $"Host={Environment.GetEnvironmentVariable("DB_HOST")};Database={Environment.GetEnvironmentVariable("DB_NAME")};Username={Environment.GetEnvironmentVariable("DB_USER")};Password={Environment.GetEnvironmentVariable("DB_PASS")};Port={Environment.GetEnvironmentVariable("DB_PORT")};";
 builder.Services.AddDbContext<NexodusDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, npgsql =>
+        npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
 // Strongly-typed options
 builder.Services.Configure<JwtOptions>(options =>
@@ -43,6 +47,30 @@ builder.Services.Configure<S3Options>(options =>
     options.SecretKey = Environment.GetEnvironmentVariable("S3_SECRET_KEY") ?? "";
     options.ServiceUrl = Environment.GetEnvironmentVariable("S3_ENDPOINT") ?? "";
     options.BucketName = Environment.GetEnvironmentVariable("S3_BUCKET_NAME") ?? "nexodus";
+});
+
+builder.Services.Configure<GeminiOptions>(options =>
+{
+    options.ApiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? "";
+    options.Model = Environment.GetEnvironmentVariable("GEMINI_MODEL") ?? "gemini-3.5-flash-lite";
+});
+
+builder.Services.Configure<OpenFoodFactsOptions>(options =>
+{
+    options.BaseUrl = Environment.GetEnvironmentVariable("OPEN_FOOD_FACTS_URL") ?? "https://world.openfoodfacts.org/api/v2/product";
+    options.UserAgent = Environment.GetEnvironmentVariable("OPEN_FOOD_FACTS_USER_AGENT") ?? "Nexodus-Nutrition/1.0 (contact@nexodus.app)";
+});
+
+builder.Services.AddHttpClient();
+
+// Configure JSON options to support String Enums in Minimal APIs
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.JsonOptions>(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
 // Configure Authentication & Authorization
@@ -103,6 +131,11 @@ builder.Services.AddScoped<IMealRepository, MealRepository>();
 builder.Services.AddScoped<IFoodRepository, FoodRepository>();
 builder.Services.AddScoped<IWaterLogRepository, WaterLogRepository>();
 builder.Services.AddScoped<IFastingRepository, FastingRepository>();
+builder.Services.AddScoped<IUserGamificationRepository, UserGamificationRepository>();
+builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
+builder.Services.AddScoped<IPantryRepository, PantryRepository>();
+builder.Services.AddScoped<IHabitRepository, HabitRepository>();
+builder.Services.AddScoped<ICardioRepository, CardioRepository>();
 builder.Services.AddScoped<IStorageService, S3StorageService>();
 
 // Application Services
@@ -114,20 +147,64 @@ builder.Services.AddScoped<ITodoListService, TodoListService>();
 builder.Services.AddScoped<INoteService, NoteService>();
 builder.Services.AddScoped<IExerciseService, ExerciseService>();
 builder.Services.AddScoped<IRoutineService, RoutineService>();
+builder.Services.AddScoped<IRoutineAiService, RoutineAiService>();
 builder.Services.AddScoped<IWorkoutLogService, WorkoutLogService>();
+builder.Services.AddScoped<IGamificationService, GamificationService>();
 builder.Services.AddScoped<IWorkoutSessionService, WorkoutSessionService>();
 builder.Services.AddScoped<IDietService, DietService>();
+builder.Services.AddScoped<IRecipeService, RecipeService>();
+builder.Services.AddScoped<IPantryService, PantryService>();
+builder.Services.AddScoped<IRecipeAiService, RecipeAiService>();
+builder.Services.AddScoped<IOpenFoodFactsService, OpenFoodFactsService>();
+builder.Services.AddScoped<IGeminiVisionService, GeminiVisionService>();
+builder.Services.AddScoped<IHabitService, HabitService>();
+builder.Services.AddScoped<ICardioService, CardioService>();
+builder.Services.AddScoped<ICardioAiService, CardioAiService>();
 
-// Configure CORS
+// Configure CORS with explicit allowed origins (SEC-01)
+var configuredOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");
+var defaultOrigins = new[] { "http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173" };
+var allowedOrigins = !string.IsNullOrWhiteSpace(configuredOrigins)
+    ? configuredOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    : defaultOrigins;
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true)
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
+});
+
+// Configure Rate Limiting (SEC-02)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Auth endpoints: 10 requests per minute by client IP
+    options.AddPolicy("AuthPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous_auth",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // AI endpoints: 10 requests per minute by user or IP
+    options.AddPolicy("AiPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.User.Identity?.Name ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous_ai",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 });
 
 // OpenAPI
@@ -146,10 +223,27 @@ if (app.Environment.IsDevelopment())
         options.HideDarkModeToggle = true;
     });
 }
+else
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+// Security Transport & Content Headers (SEC-07)
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("X-XSS-Protection", "0");
+    await next();
+});
 
 app.UseExceptionHandler();
 
 app.UseCors("AllowFrontend");
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -166,13 +260,21 @@ app.MapRoutineEndpoints();
 app.MapWorkoutLogEndpoints();
 app.MapWorkoutSessionEndpoints();
 app.MapDietEndpoints();
+app.MapRecipeEndpoints();
+app.MapPantryEndpoints();
+app.MapGamificationEndpoints();
+app.MapHabitEndpoints();
+app.MapCardioEndpoints();
 
 // Seed initial data
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<NexodusDbContext>();
     await DataSeeder.SeedExercisesAsync(context, app.Environment.ContentRootPath, app.Logger);
+    await DataSeeder.SeedStretchingExercisesAsync(context, app.Logger);
+    await DataSeeder.SeedFoodCategoriesAsync(context, app.Logger);
     await DataSeeder.SeedFoodsAsync(context, app.Logger);
+    await DataSeeder.SeedRecipesAsync(context, app.Logger);
 }
 
 app.MapGet("/health", () => TypedResults.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }))

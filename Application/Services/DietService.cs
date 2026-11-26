@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Nexodus_Back.Application.DTOs.Category;
 using Nexodus_Back.Application.DTOs.Diet;
 using Nexodus_Back.Application.Interfaces;
 using Nexodus_Back.Core.Entities;
@@ -20,7 +21,14 @@ public class DietService(
     IFoodRepository foodRepo,
     IWaterLogRepository waterRepo,
     IFastingRepository fastingRepo,
-    IUserRepository userRepo) : IDietService
+    IUserRepository userRepo,
+    IOpenFoodFactsService openFoodFactsService,
+    IWorkoutSessionRepository sessionRepo,
+    ICategoryRepository categoryRepo,
+    IRoutineRepository routineRepo,
+    IUserGamificationRepository gamificationRepo,
+    IHabitService habitService,
+    IFinanceRepository financeRepo) : IDietService
 {
     private readonly IDietTargetRepository _dietTargetRepo = dietTargetRepo ?? throw new ArgumentNullException(nameof(dietTargetRepo));
     private readonly IMealRepository _mealRepo = mealRepo ?? throw new ArgumentNullException(nameof(mealRepo));
@@ -28,6 +36,13 @@ public class DietService(
     private readonly IWaterLogRepository _waterRepo = waterRepo ?? throw new ArgumentNullException(nameof(waterRepo));
     private readonly IFastingRepository _fastingRepo = fastingRepo ?? throw new ArgumentNullException(nameof(fastingRepo));
     private readonly IUserRepository _userRepo = userRepo ?? throw new ArgumentNullException(nameof(userRepo));
+    private readonly IOpenFoodFactsService _openFoodFactsService = openFoodFactsService ?? throw new ArgumentNullException(nameof(openFoodFactsService));
+    private readonly IWorkoutSessionRepository _sessionRepo = sessionRepo ?? throw new ArgumentNullException(nameof(sessionRepo));
+    private readonly ICategoryRepository _categoryRepo = categoryRepo ?? throw new ArgumentNullException(nameof(categoryRepo));
+    private readonly IRoutineRepository _routineRepo = routineRepo ?? throw new ArgumentNullException(nameof(routineRepo));
+    private readonly IUserGamificationRepository _gamificationRepo = gamificationRepo ?? throw new ArgumentNullException(nameof(gamificationRepo));
+    private readonly IHabitService _habitService = habitService ?? throw new ArgumentNullException(nameof(habitService));
+    private readonly IFinanceRepository _financeRepo = financeRepo ?? throw new ArgumentNullException(nameof(financeRepo));
 
     #region Targets & Calculations
 
@@ -45,7 +60,10 @@ public class DietService(
                 WaterTargetMl = 2500,
                 FastingProtocol = "16:8",
                 EatingWindowStart = "12:00",
-                EatingWindowEnd = "20:00"
+                EatingWindowEnd = "20:00",
+                IsCalorieCyclingEnabled = true,
+                WorkoutDayCarbMultiplier = 1.20,
+                RestDayCarbMultiplier = 0.80
             };
         }
 
@@ -64,7 +82,14 @@ public class DietService(
             WaterTargetMl = dto.WaterTargetMl,
             FastingProtocol = dto.FastingProtocol ?? "None",
             EatingWindowStart = dto.EatingWindowStart ?? "12:00",
-            EatingWindowEnd = dto.EatingWindowEnd ?? "20:00"
+            EatingWindowEnd = dto.EatingWindowEnd ?? "20:00",
+            IsCalorieCyclingEnabled = dto.IsCalorieCyclingEnabled,
+            WorkoutDayCarbMultiplier = dto.WorkoutDayCarbMultiplier > 0 ? dto.WorkoutDayCarbMultiplier : 1.20,
+            RestDayCarbMultiplier = dto.RestDayCarbMultiplier > 0 ? dto.RestDayCarbMultiplier : 0.80,
+            FoodBudgetAmount = dto.FoodBudgetAmount,
+            FoodBudgetPeriod = string.IsNullOrWhiteSpace(dto.FoodBudgetPeriod) ? "Weekly" : dto.FoodBudgetPeriod,
+            FoodBudgetCategoryId = dto.FoodBudgetCategoryId,
+            FoodBudgetCurrency = string.IsNullOrWhiteSpace(dto.FoodBudgetCurrency) ? "MXN" : dto.FoodBudgetCurrency
         };
 
         var saved = await _dietTargetRepo.UpsertAsync(entity, cancellationToken);
@@ -174,6 +199,83 @@ public class DietService(
             ["Dinner"] = mealDtos.Where(m => m.MealType.Equals("Dinner", StringComparison.OrdinalIgnoreCase)).ToList()
         };
 
+        // Net Caloric Balance & Workout Day detection
+        double burnedCalories = 0;
+        bool hasLoggedWorkout = false;
+        try
+        {
+            var sessions = await _sessionRepo.GetAllByUserIdAsync(userId, 50, cancellationToken);
+            var completedToday = sessions
+                .Where(ws => ws.StartTime.ToString("yyyy-MM-dd") == date)
+                .ToList();
+
+            hasLoggedWorkout = completedToday.Count > 0;
+
+            foreach (var session in completedToday.Where(ws => !ws.IsActive))
+            {
+                // Estimation: ~5 kcal per min + 0.02 kcal per kg of volume
+                var durationMins = session.DurationSeconds / 60.0;
+                var sessionBurned = (durationMins * 5.0) + (session.TotalVolumeKg * 0.02);
+                burnedCalories += Math.Max(50.0, sessionBurned);
+            }
+        }
+        catch
+        {
+            // Graceful fallback if session queries fail
+        }
+
+        // Determine if today is a Workout Day vs Rest Day
+        bool isWorkoutDay = hasLoggedWorkout;
+        if (!isWorkoutDay && DateTime.TryParse(date, out var parsedDate))
+        {
+            var dayName = parsedDate.DayOfWeek.ToString();
+            try
+            {
+                var gamification = await _gamificationRepo.GetByUserIdAsync(userId, cancellationToken);
+                var restDays = gamification?.ScheduledRestDays ?? "Saturday,Sunday";
+                var isRestDay = restDays.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    .Any(d => d.Equals(dayName, StringComparison.OrdinalIgnoreCase));
+
+                if (!isRestDay)
+                {
+                    // Check if there is a routine scheduled for this day
+                    var routines = await _routineRepo.GetAllByUserIdAsync(userId, cancellationToken);
+                    var routineAssigned = routines.Any(r => r.TargetDay.HasValue && r.TargetDay.Value == (int)parsedDate.DayOfWeek);
+                    isWorkoutDay = routineAssigned || !isRestDay;
+                }
+            }
+            catch
+            {
+                // If gamification/routine check fails, fallback to weekday = workout, weekend = rest
+                isWorkoutDay = parsedDate.DayOfWeek != DayOfWeek.Saturday && parsedDate.DayOfWeek != DayOfWeek.Sunday;
+            }
+        }
+
+        // Apply Calorie / Carb Cycling (Option A: +20% carbs on gym days, -20% on rest days)
+        double targetCarbsAdjusted = targetDto.CarbsGrams;
+        double targetCaloriesAdjusted = targetDto.TargetCalories;
+        string dayType = isWorkoutDay ? "Workout" : "Rest";
+
+        if (targetDto.IsCalorieCyclingEnabled)
+        {
+            if (isWorkoutDay)
+            {
+                var multiplier = targetDto.WorkoutDayCarbMultiplier > 0 ? targetDto.WorkoutDayCarbMultiplier : 1.20;
+                targetCarbsAdjusted = Math.Round(targetDto.CarbsGrams * multiplier, 1);
+                var extraCarbs = targetCarbsAdjusted - targetDto.CarbsGrams;
+                targetCaloriesAdjusted = Math.Round(targetDto.TargetCalories + (extraCarbs * 4.0), 1);
+            }
+            else
+            {
+                var multiplier = targetDto.RestDayCarbMultiplier > 0 ? targetDto.RestDayCarbMultiplier : 0.80;
+                targetCarbsAdjusted = Math.Round(targetDto.CarbsGrams * multiplier, 1);
+                var reducedCarbs = targetDto.CarbsGrams - targetCarbsAdjusted;
+                targetCaloriesAdjusted = Math.Round(targetDto.TargetCalories - (reducedCarbs * 4.0), 1);
+            }
+        }
+
+        var netCalories = totalCalories - burnedCalories;
+
         return new DailyDietSummaryDto
         {
             Date = date,
@@ -182,6 +284,12 @@ public class DietService(
             ConsumedCarbs = Math.Round(totalCarbs, 1),
             ConsumedFat = Math.Round(totalFat, 1),
             ConsumedWaterMl = waterLog?.ConsumedMl ?? 0,
+            BurnedCalories = Math.Round(burnedCalories, 1),
+            NetCalories = Math.Round(netCalories, 1),
+            IsWorkoutDay = isWorkoutDay,
+            DayType = dayType,
+            TargetCarbsAdjusted = targetCarbsAdjusted,
+            TargetCaloriesAdjusted = targetCaloriesAdjusted,
             Target = targetDto,
             MealsByType = mealsByType,
             Meals = mealDtos
@@ -237,32 +345,30 @@ public class DietService(
         if (!string.IsNullOrWhiteSpace(dto.Time)) meal.Time = dto.Time;
         if (dto.IsCompleted.HasValue) meal.IsCompleted = dto.IsCompleted.Value;
 
+        List<MealItem>? newItems = null;
+
         if (dto.Items != null)
         {
-            meal.Items.Clear();
-            foreach (var item in dto.Items)
+            newItems = dto.Items.Select(item => new MealItem
             {
-                meal.Items.Add(new MealItem
-                {
-                    Id = Guid.NewGuid(),
-                    MealId = meal.Id,
-                    FoodId = item.FoodId,
-                    FoodName = item.FoodName,
-                    Quantity = item.Quantity,
-                    Unit = item.Unit,
-                    Calories = item.Calories,
-                    Protein = item.Protein,
-                    Carbs = item.Carbs,
-                    Fat = item.Fat
-                });
-            }
+                Id = Guid.NewGuid(),
+                MealId = meal.Id,
+                FoodId = item.FoodId,
+                FoodName = item.FoodName,
+                Quantity = item.Quantity,
+                Unit = item.Unit,
+                Calories = item.Calories,
+                Protein = item.Protein,
+                Carbs = item.Carbs,
+                Fat = item.Fat
+            }).ToList();
 
-            if (meal.Items.Count > 0)
+            if (newItems.Count > 0)
             {
-                meal.Calories = meal.Items.Sum(i => i.Calories);
-                meal.Protein = meal.Items.Sum(i => i.Protein);
-                meal.Carbs = meal.Items.Sum(i => i.Carbs);
-                meal.Fat = meal.Items.Sum(i => i.Fat);
+                meal.Calories = newItems.Sum(i => i.Calories);
+                meal.Protein = newItems.Sum(i => i.Protein);
+                meal.Carbs = newItems.Sum(i => i.Carbs);
+                meal.Fat = newItems.Sum(i => i.Fat);
             }
             else
             {
@@ -280,7 +386,7 @@ public class DietService(
             if (dto.Fat.HasValue) meal.Fat = dto.Fat.Value;
         }
 
-        var updated = await _mealRepo.UpdateAsync(meal, cancellationToken);
+        var updated = await _mealRepo.UpdateAsync(meal, newItems, cancellationToken);
         return MapToMealDto(updated);
     }
 
@@ -296,6 +402,21 @@ public class DietService(
     #endregion
 
     #region Foods
+
+    public async Task<List<CategoryDto>> GetFoodCategoriesAsync(CancellationToken cancellationToken = default)
+    {
+        var categories = await _categoryRepo.GetByTypeAsync("Food", cancellationToken);
+        return categories.Select(c => new CategoryDto
+        {
+            Id = c.Id,
+            UserId = c.UserId,
+            Name = c.Name,
+            Description = c.Description,
+            MonthlyLimit = c.MonthlyLimit,
+            Type = c.Type,
+            CreatedAt = c.CreatedAt
+        }).ToList();
+    }
 
     public async Task<FoodSearchResponseDto> SearchFoodsAsync(string query, Guid userId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
@@ -313,22 +434,179 @@ public class DietService(
         };
     }
 
-    public async Task<FoodItemDto> GetFoodByBarcodeAsync(string barcode, CancellationToken cancellationToken = default)
+    public async Task<FoodItemDto> GetFoodByBarcodeAsync(string barcode, Guid? userId = null, CancellationToken cancellationToken = default)
     {
-        var food = await _foodRepo.GetByBarcodeAsync(barcode, cancellationToken);
+        var food = await _foodRepo.GetByBarcodeAsync(barcode, userId, cancellationToken);
         if (food == null)
-            throw new NotFoundException($"Alimento con código de barras '{barcode}' no encontrado.");
+        {
+            // Fallback: Query global Open Food Facts API
+            var externalFood = await _openFoodFactsService.LookupBarcodeAsync(barcode, cancellationToken);
+            if (externalFood != null)
+            {
+                // Cache into local database for future instant lookups (as public shared food)
+                externalFood.IsCustom = false;
+                externalFood.UserId = null;
+                food = await _foodRepo.CreateAsync(externalFood, cancellationToken);
+            }
+        }
+
+        if (food == null)
+            throw new NotFoundException($"Alimento con código de barras '{barcode}' no encontrado en el catálogo local ni en Open Food Facts.");
 
         return MapToFoodDto(food);
     }
 
     public async Task<FoodItemDto> CreateCustomFoodAsync(Guid userId, CreateFoodItemDto dto, CancellationToken cancellationToken = default)
     {
-        var food = new Food
+        if (dto.CategoryId.HasValue && string.IsNullOrWhiteSpace(dto.Category))
+        {
+            var cat = await _categoryRepo.GetByIdAsync(dto.CategoryId.Value);
+            if (cat != null) dto.Category = cat.Name;
+        }
+
+        // 1. Si el usuario ya cuenta con un alimento personalizado con el mismo código o nombre, actualizarlo para evitar duplicados
+        var existingCustom = await _foodRepo.GetUserCustomFoodAsync(userId, dto.Barcode, dto.Name, cancellationToken);
+        if (existingCustom != null)
+        {
+            existingCustom.Name = dto.Name;
+            existingCustom.Brand = dto.Brand;
+            existingCustom.Barcode = dto.Barcode ?? existingCustom.Barcode;
+            existingCustom.CategoryId = dto.CategoryId ?? existingCustom.CategoryId;
+            existingCustom.Category = dto.Category ?? existingCustom.Category;
+            existingCustom.ServingSize = dto.ServingSize;
+            existingCustom.ServingUnit = dto.ServingUnit;
+            existingCustom.Calories = dto.Calories;
+            existingCustom.Protein = dto.Protein;
+            existingCustom.Carbs = dto.Carbs;
+            existingCustom.Fat = dto.Fat;
+            existingCustom.Fiber = dto.Fiber;
+            existingCustom.SodiumMg = dto.SodiumMg;
+            existingCustom.PotassiumMg = dto.PotassiumMg;
+
+            var updated = await _foodRepo.UpdateAsync(existingCustom, cancellationToken);
+            return MapToFoodDto(updated);
+        }
+
+        // 2. Si ya existe un alimento público en el catálogo general:
+        // Como ya existe públicamente, este registro se almacena como copia personalizada del usuario para no sobreescribir el público
+        var existingPublic = await _foodRepo.GetPublicFoodAsync(dto.Barcode, dto.Name, cancellationToken);
+        if (existingPublic != null)
+        {
+            var userCustomFood = new Food
+            {
+                Name = dto.Name,
+                Brand = dto.Brand ?? existingPublic.Brand,
+                Barcode = dto.Barcode ?? existingPublic.Barcode,
+                CategoryId = dto.CategoryId ?? existingPublic.CategoryId,
+                Category = dto.Category ?? existingPublic.Category,
+                ServingSize = dto.ServingSize,
+                ServingUnit = dto.ServingUnit,
+                Calories = dto.Calories,
+                Protein = dto.Protein,
+                Carbs = dto.Carbs,
+                Fat = dto.Fat,
+                Fiber = dto.Fiber,
+                SodiumMg = dto.SodiumMg,
+                PotassiumMg = dto.PotassiumMg,
+                IsCustom = true,
+                UserId = userId
+            };
+
+            var createdCustom = await _foodRepo.CreateAsync(userCustomFood, cancellationToken);
+            return MapToFoodDto(createdCustom);
+        }
+
+        // 3. Es un alimento totalmente nuevo que no existía en el catálogo:
+        // ¡Se crea públicamente (IsCustom = false, UserId = null) para que TODOS los usuarios puedan verlo y consumirlo!
+        var newPublicFood = new Food
         {
             Name = dto.Name,
             Brand = dto.Brand,
             Barcode = dto.Barcode,
+            CategoryId = dto.CategoryId,
+            Category = dto.Category,
+            ServingSize = dto.ServingSize,
+            ServingUnit = dto.ServingUnit,
+            Calories = dto.Calories,
+            Protein = dto.Protein,
+            Carbs = dto.Carbs,
+            Fat = dto.Fat,
+            Fiber = dto.Fiber,
+            SodiumMg = dto.SodiumMg,
+            PotassiumMg = dto.PotassiumMg,
+            IsCustom = false, // Público para toda la comunidad
+            UserId = null     // Sin asignar a un único usuario (catálogo global)
+        };
+
+        var created = await _foodRepo.CreateAsync(newPublicFood, cancellationToken);
+        return MapToFoodDto(created);
+    }
+
+    public async Task<FoodItemDto> UpdateFoodAsync(Guid id, Guid userId, CreateFoodItemDto dto, CancellationToken cancellationToken = default)
+    {
+        var existing = await _foodRepo.GetByIdAsync(id, cancellationToken);
+        if (existing == null)
+            throw new NotFoundException($"Alimento con ID '{id}' no encontrado.");
+
+        if (dto.CategoryId.HasValue && string.IsNullOrWhiteSpace(dto.Category))
+        {
+            var cat = await _categoryRepo.GetByIdAsync(dto.CategoryId.Value);
+            if (cat != null) dto.Category = cat.Name;
+        }
+
+        // Si ya es un alimento personalizado del usuario autenticado, actualizarlo directamente
+        if (existing.IsCustom && existing.UserId == userId)
+        {
+            existing.Name = dto.Name;
+            existing.Brand = dto.Brand;
+            existing.Barcode = dto.Barcode;
+            existing.CategoryId = dto.CategoryId ?? existing.CategoryId;
+            existing.Category = dto.Category ?? existing.Category;
+            existing.ServingSize = dto.ServingSize;
+            existing.ServingUnit = dto.ServingUnit;
+            existing.Calories = dto.Calories;
+            existing.Protein = dto.Protein;
+            existing.Carbs = dto.Carbs;
+            existing.Fat = dto.Fat;
+            existing.Fiber = dto.Fiber;
+            existing.SodiumMg = dto.SodiumMg;
+            existing.PotassiumMg = dto.PotassiumMg;
+
+            var updated = await _foodRepo.UpdateAsync(existing, cancellationToken);
+            return MapToFoodDto(updated);
+        }
+
+        // Si es un alimento del sistema u otro, verificar si el usuario ya tenía una copia personalizada previa
+        var userCustom = await _foodRepo.GetUserCustomFoodAsync(userId, existing.Barcode ?? dto.Barcode, existing.Name, cancellationToken);
+        if (userCustom != null)
+        {
+            userCustom.Name = dto.Name;
+            userCustom.Brand = dto.Brand;
+            userCustom.Barcode = dto.Barcode ?? userCustom.Barcode;
+            userCustom.CategoryId = dto.CategoryId ?? userCustom.CategoryId;
+            userCustom.Category = dto.Category ?? userCustom.Category;
+            userCustom.ServingSize = dto.ServingSize;
+            userCustom.ServingUnit = dto.ServingUnit;
+            userCustom.Calories = dto.Calories;
+            userCustom.Protein = dto.Protein;
+            userCustom.Carbs = dto.Carbs;
+            userCustom.Fat = dto.Fat;
+            userCustom.Fiber = dto.Fiber;
+            userCustom.SodiumMg = dto.SodiumMg;
+            userCustom.PotassiumMg = dto.PotassiumMg;
+
+            var updated = await _foodRepo.UpdateAsync(userCustom, cancellationToken);
+            return MapToFoodDto(updated);
+        }
+
+        // Si no existía copia personalizada previa, crear una copia personalizada asociada a este usuario
+        var newCustom = new Food
+        {
+            Name = dto.Name,
+            Brand = dto.Brand,
+            Barcode = dto.Barcode ?? existing.Barcode,
+            CategoryId = dto.CategoryId ?? existing.CategoryId,
+            Category = dto.Category ?? existing.Category,
             ServingSize = dto.ServingSize,
             ServingUnit = dto.ServingUnit,
             Calories = dto.Calories,
@@ -342,7 +620,7 @@ public class DietService(
             UserId = userId
         };
 
-        var created = await _foodRepo.CreateAsync(food, cancellationToken);
+        var created = await _foodRepo.CreateAsync(newCustom, cancellationToken);
         return MapToFoodDto(created);
     }
 
@@ -376,6 +654,15 @@ public class DietService(
         var targetMl = target.WaterTargetMl > 0 ? target.WaterTargetMl : 2500;
         var percentage = Math.Round((log.ConsumedMl / targetMl) * 100, 1);
 
+        try
+        {
+            await _habitService.HandleAutoCompleteTriggerAsync(userId, "WaterLog", dto.AmountMl / 1000.0, cancellationToken);
+        }
+        catch
+        {
+            // Fail-safe
+        }
+
         return new WaterLogDto
         {
             Date = dto.Date,
@@ -392,6 +679,15 @@ public class DietService(
 
         var targetMl = target.WaterTargetMl > 0 ? target.WaterTargetMl : 2500;
         var percentage = Math.Round((log.ConsumedMl / targetMl) * 100, 1);
+
+        try
+        {
+            await _habitService.HandleAutoCompleteTriggerAsync(userId, "WaterLog", dto.TotalMl / 1000.0, cancellationToken);
+        }
+        catch
+        {
+            // Fail-safe
+        }
 
         return new WaterLogDto
         {
@@ -495,6 +791,113 @@ public class DietService(
 
     #region Mapping Helpers
 
+    public async Task<FoodBudgetSummaryDto> GetFoodBudgetSummaryAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var target = await _dietTargetRepo.GetByUserIdAsync(userId, cancellationToken);
+        var period = string.IsNullOrWhiteSpace(target?.FoodBudgetPeriod) ? "Weekly" : target.FoodBudgetPeriod;
+        var currency = string.IsNullOrWhiteSpace(target?.FoodBudgetCurrency) ? "MXN" : target.FoodBudgetCurrency;
+
+        var now = DateTime.UtcNow.Date;
+        DateTime periodStart;
+        DateTime periodEnd;
+
+        if (string.Equals(period, "Monthly", StringComparison.OrdinalIgnoreCase))
+        {
+            periodStart = new DateTime(now.Year, now.Month, 1);
+            periodEnd = periodStart.AddMonths(1).AddDays(-1);
+        }
+        else if (string.Equals(period, "Biweekly", StringComparison.OrdinalIgnoreCase))
+        {
+            if (now.Day <= 15)
+            {
+                periodStart = new DateTime(now.Year, now.Month, 1);
+                periodEnd = new DateTime(now.Year, now.Month, 15);
+            }
+            else
+            {
+                periodStart = new DateTime(now.Year, now.Month, 16);
+                periodEnd = new DateTime(now.Year, now.Month, 1).AddMonths(1).AddDays(-1);
+            }
+        }
+        else // Weekly (Monday - Sunday)
+        {
+            var diff = (7 + (now.DayOfWeek - DayOfWeek.Monday)) % 7;
+            periodStart = now.AddDays(-diff);
+            periodEnd = periodStart.AddDays(6);
+        }
+
+        var userCategories = (await _categoryRepo.GetByUserIdAsync(userId, cancellationToken)).ToList();
+        Category? linkedCategory = null;
+        if (target?.FoodBudgetCategoryId is Guid catId)
+        {
+            linkedCategory = userCategories.FirstOrDefault(c => c.Id == catId);
+        }
+
+        // If user linked a Finance category with MonthlyLimit and didn't set FoodBudgetAmount explicitly, derive from it
+        decimal? budgetAmount = target?.FoodBudgetAmount;
+        if ((!budgetAmount.HasValue || budgetAmount <= 0) && linkedCategory?.MonthlyLimit is > 0)
+        {
+            budgetAmount = string.Equals(period, "Weekly", StringComparison.OrdinalIgnoreCase)
+                ? Math.Round(linkedCategory.MonthlyLimit.Value / 4m, 2)
+                : string.Equals(period, "Biweekly", StringComparison.OrdinalIgnoreCase)
+                    ? Math.Round(linkedCategory.MonthlyLimit.Value / 2m, 2)
+                    : linkedCategory.MonthlyLimit.Value;
+        }
+
+        var finances = await _financeRepo.GetAllByUserIdAsync(userId, cancellationToken);
+        var foodCategoryIds = new HashSet<Guid>();
+        if (linkedCategory != null)
+        {
+            foodCategoryIds.Add(linkedCategory.Id);
+        }
+        else
+        {
+            foreach (var c in userCategories)
+            {
+                var n = (c.Name ?? "").ToLowerInvariant();
+                if (n.Contains("comida") || n.Contains("super") || n.Contains("súper") ||
+                    n.Contains("alimento") || n.Contains("food") || n.Contains("despensa") ||
+                    n.Contains("restaurante"))
+                {
+                    foodCategoryIds.Add(c.Id);
+                }
+            }
+        }
+
+        decimal spent = finances
+            .Where(f =>
+                (string.Equals(f.TransactionType, "Expense", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(f.TransactionType, "Gasto", StringComparison.OrdinalIgnoreCase)) &&
+                f.TransactionDate.Date >= periodStart &&
+                f.TransactionDate.Date <= periodEnd &&
+                f.CategoryId.HasValue &&
+                foodCategoryIds.Contains(f.CategoryId.Value))
+            .Sum(f => f.Amount);
+
+        decimal remaining = budgetAmount.HasValue ? Math.Max(0, budgetAmount.Value - spent) : 0;
+        double percentage = budgetAmount is > 0 ? Math.Round((double)(spent / budgetAmount.Value) * 100, 1) : 0;
+
+        int remainingDays = Math.Max(1, (periodEnd - now).Days + 1);
+        decimal? suggestedPerMeal = budgetAmount is > 0
+            ? Math.Round(remaining / (remainingDays * 3m), 2)
+            : null;
+
+        return new FoodBudgetSummaryDto
+        {
+            BudgetAmount = budgetAmount,
+            Period = period,
+            Currency = currency,
+            SpentAmount = Math.Round(spent, 2),
+            RemainingAmount = Math.Round(remaining, 2),
+            PercentageUsed = percentage,
+            SuggestedPerMealBudget = suggestedPerMeal,
+            LinkedCategoryId = linkedCategory?.Id ?? target?.FoodBudgetCategoryId,
+            LinkedCategoryName = linkedCategory?.Name,
+            PeriodStartDate = periodStart.ToString("yyyy-MM-dd"),
+            PeriodEndDate = periodEnd.ToString("yyyy-MM-dd")
+        };
+    }
+
     private static DietTargetDto MapToTargetDto(DietTarget entity) => new()
     {
         TargetCalories = entity.TargetCalories,
@@ -504,7 +907,14 @@ public class DietService(
         WaterTargetMl = entity.WaterTargetMl,
         FastingProtocol = entity.FastingProtocol,
         EatingWindowStart = entity.EatingWindowStart,
-        EatingWindowEnd = entity.EatingWindowEnd
+        EatingWindowEnd = entity.EatingWindowEnd,
+        IsCalorieCyclingEnabled = entity.IsCalorieCyclingEnabled,
+        WorkoutDayCarbMultiplier = entity.WorkoutDayCarbMultiplier,
+        RestDayCarbMultiplier = entity.RestDayCarbMultiplier,
+        FoodBudgetAmount = entity.FoodBudgetAmount,
+        FoodBudgetPeriod = entity.FoodBudgetPeriod,
+        FoodBudgetCategoryId = entity.FoodBudgetCategoryId,
+        FoodBudgetCurrency = entity.FoodBudgetCurrency
     };
 
     private static MealDto MapToMealDto(Meal entity) => new()
@@ -539,6 +949,8 @@ public class DietService(
         Name = entity.Name,
         Brand = entity.Brand,
         Barcode = entity.Barcode,
+        CategoryId = entity.CategoryId,
+        Category = entity.Category,
         ServingSize = entity.ServingSize,
         ServingUnit = entity.ServingUnit,
         Calories = entity.Calories,

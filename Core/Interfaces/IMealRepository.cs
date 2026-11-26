@@ -11,6 +11,6 @@ public interface IMealRepository
     Task<List<Meal>> GetByDateAsync(Guid userId, string date, CancellationToken cancellationToken = default);
     Task<Meal?> GetByIdAsync(Guid id, Guid userId, CancellationToken cancellationToken = default);
     Task<Meal> CreateAsync(Meal meal, CancellationToken cancellationToken = default);
-    Task<Meal> UpdateAsync(Meal meal, CancellationToken cancellationToken = default);
+    Task<Meal> UpdateAsync(Meal meal, IEnumerable<MealItem>? newItems = null, CancellationToken cancellationToken = default);
     Task DeleteAsync(Meal meal, CancellationToken cancellationToken = default);
 }

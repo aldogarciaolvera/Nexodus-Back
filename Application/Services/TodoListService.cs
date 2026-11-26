@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Nexodus_Back.Application.DTOs.TodoList;
 using Nexodus_Back.Application.Interfaces;
@@ -14,7 +15,7 @@ public class TodoListService(ITodoListRepository repository) : ITodoListService
 {
     private readonly ITodoListRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
 
-    public async Task<TodoListDto> CreateAsync(Guid userId, CreateTodoListRequest request)
+    public async Task<TodoListDto> CreateAsync(Guid userId, CreateTodoListRequest request, CancellationToken cancellationToken = default)
     {
         var todo = new TodoList
         {
@@ -33,13 +34,13 @@ public class TodoListService(ITodoListRepository repository) : ITodoListService
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _repository.CreateAsync(todo);
+        await _repository.CreateAsync(todo, cancellationToken);
         return MapToDto(todo);
     }
 
-    public async Task<IEnumerable<TodoListDto>> GetAllByUserIdAsync(Guid userId)
+    public async Task<IEnumerable<TodoListDto>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var todos = await _repository.GetAllByUserIdAsync(userId);
+        var todos = await _repository.GetAllByUserIdAsync(userId, cancellationToken);
         
         // Recalcular IsCompleted para hábitos basados en LastCompletedAt
         var dtos = todos.Select(t =>
@@ -55,9 +56,9 @@ public class TodoListService(ITodoListRepository repository) : ITodoListService
         return dtos;
     }
 
-    public async Task<TodoListDto> GetByIdAsync(Guid userId, Guid id)
+    public async Task<TodoListDto> GetByIdAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
-        var todo = await _repository.GetByIdAsync(userId, id);
+        var todo = await _repository.GetByIdAsync(userId, id, cancellationToken);
         if (todo == null)
         {
             throw new NotFoundException($"La tarea o hábito con Id '{id}' no fue encontrado.");
@@ -71,9 +72,9 @@ public class TodoListService(ITodoListRepository repository) : ITodoListService
         return MapToDto(todo);
     }
 
-    public async Task<TodoListDto> UpdateAsync(Guid userId, Guid id, UpdateTodoListRequest request)
+    public async Task<TodoListDto> UpdateAsync(Guid userId, Guid id, UpdateTodoListRequest request, CancellationToken cancellationToken = default)
     {
-        var todo = await _repository.GetByIdAsync(userId, id);
+        var todo = await _repository.GetByIdAsync(userId, id, cancellationToken);
         if (todo == null)
         {
             throw new NotFoundException($"La tarea o hábito con Id '{id}' no fue encontrado.");
@@ -91,24 +92,24 @@ public class TodoListService(ITodoListRepository repository) : ITodoListService
         todo.Frequency = request.Frequency;
         todo.CustomDays = request.CustomDays;
 
-        await _repository.UpdateAsync(todo);
+        await _repository.UpdateAsync(todo, cancellationToken);
         return MapToDto(todo);
     }
 
-    public async Task DeleteAsync(Guid userId, Guid id)
+    public async Task DeleteAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
-        var todo = await _repository.GetByIdAsync(userId, id);
+        var todo = await _repository.GetByIdAsync(userId, id, cancellationToken);
         if (todo == null)
         {
             throw new NotFoundException($"La tarea o hábito con Id '{id}' no fue encontrado.");
         }
 
-        await _repository.DeleteAsync(todo);
+        await _repository.DeleteAsync(todo, cancellationToken);
     }
 
-    public async Task<TodoListDto> MarkAsCompletedAsync(Guid userId, Guid id)
+    public async Task<TodoListDto> MarkAsCompletedAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
-        var todo = await _repository.GetByIdAsync(userId, id);
+        var todo = await _repository.GetByIdAsync(userId, id, cancellationToken);
         if (todo == null)
         {
             throw new NotFoundException($"La tarea o hábito con Id '{id}' no fue encontrado.");
@@ -142,13 +143,13 @@ public class TodoListService(ITodoListRepository repository) : ITodoListService
             todo.IsCompleted = true;
         }
 
-        await _repository.UpdateAsync(todo);
+        await _repository.UpdateAsync(todo, cancellationToken);
         return MapToDto(todo);
     }
 
-    public async Task<TodoListDto> MarkAsUncompletedAsync(Guid userId, Guid id)
+    public async Task<TodoListDto> MarkAsUncompletedAsync(Guid userId, Guid id, CancellationToken cancellationToken = default)
     {
-        var todo = await _repository.GetByIdAsync(userId, id);
+        var todo = await _repository.GetByIdAsync(userId, id, cancellationToken);
         if (todo == null)
         {
             throw new NotFoundException($"La tarea o hábito con Id '{id}' no fue encontrado.");
@@ -182,7 +183,7 @@ public class TodoListService(ITodoListRepository repository) : ITodoListService
             todo.IsCompleted = false;
         }
 
-        await _repository.UpdateAsync(todo);
+        await _repository.UpdateAsync(todo, cancellationToken);
         return MapToDto(todo);
     }
 

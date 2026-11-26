@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Nexodus_Back.Application.DTOs.User;
 using Nexodus_Back.Application.Interfaces;
@@ -14,14 +15,14 @@ public class UserService(IUserRepository userRepository) : IUserService
 {
     private readonly IUserRepository _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
 
-    public async Task<UserResponse> GetCurrentUserAsync(string userId)
+    public async Task<UserResponse> GetCurrentUserAsync(string userId, CancellationToken cancellationToken = default)
     {
         if (!Guid.TryParse(userId, out var parsedId))
         {
             throw new UnauthorizedException("ID de usuario inválido.");
         }
 
-        var user = await _userRepository.GetByIdAsync(parsedId);
+        var user = await _userRepository.GetByIdAsync(parsedId, cancellationToken);
         if (user == null)
         {
             throw new NotFoundException("Usuario no encontrado.");
@@ -38,14 +39,14 @@ public class UserService(IUserRepository userRepository) : IUserService
         };
     }
 
-    public async Task<UserResponse> UpdateUserAsync(string userId, UpdateUserRequest request)
+    public async Task<UserResponse> UpdateUserAsync(string userId, UpdateUserRequest request, CancellationToken cancellationToken = default)
     {
         if (!Guid.TryParse(userId, out var parsedId))
         {
             throw new UnauthorizedException("ID de usuario inválido.");
         }
 
-        var user = await _userRepository.GetByIdAsync(parsedId);
+        var user = await _userRepository.GetByIdAsync(parsedId, cancellationToken);
         if (user == null)
         {
             throw new NotFoundException("Usuario no encontrado.");
@@ -53,7 +54,7 @@ public class UserService(IUserRepository userRepository) : IUserService
 
         if (user.Email != request.Email)
         {
-            var existingEmail = await _userRepository.GetByEmailAsync(request.Email);
+            var existingEmail = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
             if (existingEmail != null)
             {
                 throw new ConflictException("El correo ya está registrado.");
@@ -62,7 +63,7 @@ public class UserService(IUserRepository userRepository) : IUserService
 
         if (user.Username != request.Username)
         {
-            var existingUsername = await _userRepository.GetByUsernameAsync(request.Username);
+            var existingUsername = await _userRepository.GetByUsernameAsync(request.Username, cancellationToken);
             if (existingUsername != null)
             {
                 throw new ConflictException("El nombre de usuario ya está en uso.");
@@ -80,7 +81,7 @@ public class UserService(IUserRepository userRepository) : IUserService
         }
         user.UpdatedAt = DateTime.UtcNow;
 
-        await _userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user, cancellationToken);
 
         return new UserResponse
         {

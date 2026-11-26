@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -20,10 +21,10 @@ public static class FinanceEndpoints
             .WithTags("Finances")
             .RequireAuthorization();
 
-        group.MapPost("/", async (CreateFinanceRequest request, IFinanceService financeService, ClaimsPrincipal user) =>
+        group.MapPost("/", async (CreateFinanceRequest request, IFinanceService financeService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var result = await financeService.CreateAsync(userId, request);
+            var result = await financeService.CreateAsync(userId, request, ct);
             return Results.Created($"/api/finances/{result.Id}", ApiResponse<FinanceDto>.Success(result, 201));
         })
         .AddEndpointFilter<ValidationFilter<CreateFinanceRequest>>()
@@ -32,30 +33,30 @@ public static class FinanceEndpoints
         .Produces<ApiResponse<FinanceDto>>(StatusCodes.Status201Created)
         .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
-        group.MapGet("/", async (IFinanceService financeService, ClaimsPrincipal user) =>
+        group.MapGet("/", async (int? page, int? pageSize, IFinanceService financeService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var finances = await financeService.GetAllByUserIdAsync(userId);
+            var finances = await financeService.GetAllByUserIdAsync(userId, page, pageSize, ct);
             return Results.Ok(ApiResponse<IEnumerable<FinanceDto>>.Success(finances));
         })
         .WithName("GetAllFinances")
-        .WithSummary("Obtiene todas las transacciones financieras del usuario")
+        .WithSummary("Obtiene todas las transacciones financieras del usuario con paginación opcional")
         .Produces<ApiResponse<IEnumerable<FinanceDto>>>(StatusCodes.Status200OK);
 
-        group.MapGet("/summary", async (IFinanceService financeService, ClaimsPrincipal user) =>
+        group.MapGet("/summary", async (IFinanceService financeService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var summary = await financeService.GetSummaryAsync(userId);
+            var summary = await financeService.GetSummaryAsync(userId, ct);
             return Results.Ok(ApiResponse<FinanceSummaryDto>.Success(summary));
         })
         .WithName("GetFinanceSummary")
         .WithSummary("Obtiene el resumen financiero (total de ingresos, gastos y balance)")
         .Produces<ApiResponse<FinanceSummaryDto>>(StatusCodes.Status200OK);
 
-        group.MapGet("/{id:guid}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user) =>
+        group.MapGet("/{id:guid}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var finance = await financeService.GetByIdAsync(userId, id);
+            var finance = await financeService.GetByIdAsync(userId, id, ct);
             return Results.Ok(ApiResponse<FinanceDto>.Success(finance));
         })
         .WithName("GetFinanceById")
@@ -63,10 +64,10 @@ public static class FinanceEndpoints
         .Produces<ApiResponse<FinanceDto>>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPut("/{id:guid}", async (Guid id, UpdateFinanceRequest request, IFinanceService financeService, ClaimsPrincipal user) =>
+        group.MapPut("/{id:guid}", async (Guid id, UpdateFinanceRequest request, IFinanceService financeService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            var result = await financeService.UpdateAsync(userId, id, request);
+            var result = await financeService.UpdateAsync(userId, id, request, ct);
             return Results.Ok(ApiResponse<FinanceDto>.Success(result));
         })
         .AddEndpointFilter<ValidationFilter<UpdateFinanceRequest>>()
@@ -76,10 +77,10 @@ public static class FinanceEndpoints
         .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapDelete("/{id:guid}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user) =>
+        group.MapDelete("/{id:guid}", async (Guid id, IFinanceService financeService, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var userId = user.GetUserId();
-            await financeService.DeleteAsync(userId, id);
+            await financeService.DeleteAsync(userId, id, ct);
             return Results.Ok(ApiResponse<string>.Success("Registro eliminado"));
         })
         .WithName("DeleteFinance")

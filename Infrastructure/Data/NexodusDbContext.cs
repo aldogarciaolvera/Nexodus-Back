@@ -30,6 +30,16 @@ public class NexodusDbContext : DbContext
     public DbSet<WorkoutLog> WorkoutLogs { get; set; } = null!;
     public DbSet<WorkoutSession> WorkoutSessions { get; set; } = null!;
     public DbSet<WorkoutSet> WorkoutSets { get; set; } = null!;
+    public DbSet<UserGamification> UserGamifications { get; set; } = null!;
+    public DbSet<Recipe> Recipes { get; set; } = null!;
+    public DbSet<RecipeIngredient> RecipeIngredients { get; set; } = null!;
+    public DbSet<RecipeStep> RecipeSteps { get; set; } = null!;
+    public DbSet<PantryItem> PantryItems { get; set; } = null!;
+    public DbSet<Habit> Habits { get; set; } = null!;
+    public DbSet<HabitCompletion> HabitCompletions { get; set; } = null!;
+    public DbSet<HabitReminder> HabitReminders { get; set; } = null!;
+    public DbSet<CardioSession> CardioSessions { get; set; } = null!;
+    public DbSet<CardioSegment> CardioSegments { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -43,7 +53,18 @@ public class NexodusDbContext : DbContext
 
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasIndex(c => new { c.UserId, c.Name }).IsUnique();
+            entity.Property(c => c.Type)
+                .HasMaxLength(20)
+                .HasDefaultValue("Money");
+
+            entity.HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(c => new { c.UserId, c.Name });
+            entity.HasIndex(c => c.Type);
         });
 
         modelBuilder.Entity<Finance>()
@@ -60,6 +81,23 @@ public class NexodusDbContext : DbContext
 
         modelBuilder.Entity<Exercise>()
             .HasIndex(e => e.ExternalId).IsUnique();
+
+        modelBuilder.Entity<Routine>(entity =>
+        {
+            entity.Property(r => r.IsAiGenerated).HasDefaultValue(false);
+            entity.Property(r => r.IncludeCardio).HasDefaultValue(false);
+            entity.Property(r => r.RoutineType).HasMaxLength(32).HasDefaultValue("Strength");
+            entity.Property(r => r.IsTemplate).HasDefaultValue(false);
+        });
+
+        modelBuilder.Entity<CardioSession>(entity =>
+        {
+            entity.HasIndex(c => new { c.UserId, c.StartTime });
+            entity.HasMany(c => c.Segments)
+                .WithOne(s => s.CardioSession)
+                .HasForeignKey(s => s.CardioSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<RoutineExercise>()
             .HasKey(re => new { re.RoutineId, re.ExerciseId });
@@ -97,6 +135,12 @@ public class NexodusDbContext : DbContext
         {
             entity.HasIndex(f => f.Barcode);
             entity.HasIndex(f => f.Name);
+            entity.HasIndex(f => f.CategoryId);
+
+            entity.HasOne(f => f.FoodCategory)
+                .WithMany(c => c.Foods)
+                .HasForeignKey(f => f.CategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Meal>(entity =>
@@ -149,6 +193,109 @@ public class NexodusDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(s => s.ExerciseId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserGamification>(entity =>
+        {
+            entity.HasIndex(g => g.UserId).IsUnique();
+
+            entity.HasOne(g => g.User)
+                .WithOne()
+                .HasForeignKey<UserGamification>(g => g.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Recipe>(entity =>
+        {
+            entity.HasIndex(r => r.UserId);
+            entity.HasIndex(r => r.MealType);
+            entity.HasIndex(r => r.DietType);
+            entity.HasIndex(r => r.IsCommunity);
+            entity.HasIndex(r => r.ParentRecipeId);
+
+            entity.HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(r => r.ParentRecipe)
+                .WithMany(p => p.Variants)
+                .HasForeignKey(r => r.ParentRecipeId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasMany(r => r.Ingredients)
+                .WithOne(i => i.Recipe)
+                .HasForeignKey(i => i.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(r => r.Steps)
+                .WithOne(s => s.Recipe)
+                .HasForeignKey(s => s.RecipeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RecipeIngredient>(entity =>
+        {
+            entity.HasIndex(ri => ri.RecipeId);
+            entity.HasIndex(ri => ri.FoodId);
+
+            entity.HasOne(ri => ri.Food)
+                .WithMany()
+                .HasForeignKey(ri => ri.FoodId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<RecipeStep>(entity =>
+        {
+            entity.HasIndex(rs => new { rs.RecipeId, rs.StepNumber });
+        });
+
+        modelBuilder.Entity<PantryItem>(entity =>
+        {
+            entity.HasIndex(pi => pi.UserId);
+            entity.HasIndex(pi => pi.FoodId);
+
+            entity.HasOne(pi => pi.User)
+                .WithMany()
+                .HasForeignKey(pi => pi.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(pi => pi.Food)
+                .WithMany()
+                .HasForeignKey(pi => pi.FoodId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Habit>(entity =>
+        {
+            entity.HasIndex(h => new { h.UserId, h.IsArchived });
+            entity.HasIndex(h => h.AutoCompleteSource);
+
+            entity.HasOne(h => h.User)
+                .WithMany()
+                .HasForeignKey(h => h.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(h => h.Completions)
+                .WithOne(c => c.Habit)
+                .HasForeignKey(c => c.HabitId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(h => h.Reminders)
+                .WithOne(r => r.Habit)
+                .HasForeignKey(r => r.HabitId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<HabitCompletion>(entity =>
+        {
+            entity.HasIndex(c => new { c.HabitId, c.Date }).IsUnique();
+            entity.HasIndex(c => new { c.UserId, c.Date });
+        });
+
+        modelBuilder.Entity<HabitReminder>(entity =>
+        {
+            entity.HasIndex(r => r.HabitId);
         });
     }
 }

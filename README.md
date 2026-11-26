@@ -6,35 +6,54 @@ Backend API for Nexodus, a personal management application (Diet, Finance, TodoL
 
 *   **.NET 10 (C# 12+)** con características modernas (Primary Constructors, File-Scoped Namespaces, Collection Expressions).
 *   **PostgreSQL** como motor relacional.
-*   **Entity Framework Core** con consultas optimizadas (`.AsNoTracking()` y carga diferida selectiva).
+*   **Entity Framework Core** con consultas optimizadas (`.AsNoTracking()`, `QuerySplittingBehavior.SplitQuery` para evitar explosión cartesiana en colecciones múltiples y carga diferida selectiva).
 *   **JWT & BCrypt** para autenticación y seguridad con `JwtProvider` y `PasswordHasher`.
 *   **AWSSDK.S3** con cliente Singleton administrado y soporte para MinIO / Cloudflare R2 / AWS S3.
-*   **FluentValidation** acoplado mediante Endpoint Filters (`ValidationFilter<T>`).
-*   **Scalar** y OpenAPI nativo de .NET 10 para exploración interactiva de la API.
+*   **FluentValidation** acoplado mediante Endpoint Filters (`ValidationFilter<T>`) con cobertura del 100% de los endpoints de mutación.
+*   **Scalar** y OpenAPI nativo de .NET 10 para exploración interactiva de la API con documentación XML de interfaces.
+*   **Programación Asíncrona Total:** Propagación de `CancellationToken` a lo largo de toda la cadena (Endpoints -> Servicios -> Repositorios -> EF Core).
 
 ## Arquitectura
 
 El proyecto sigue estrictamente los principios de **Clean Architecture**:
-*   `Core/`: Entidades de dominio, Excepciones del catálogo (`ValidationException`, `NotFoundException`, `ConflictException`, `UnauthorizedException`) e Interfaces de repositorio. Cero dependencias externas.
-*   `Application/`: DTOs organizados por módulo, Casos de Uso (Servicios con interfaces e inyección de dependencias `I...Service`) y Validadores FluentValidation.
-*   `Infrastructure/`: Repositorios EF Core, Contexto de Base de Datos (`NexodusDbContext`), Servicios de almacenamiento (`S3StorageService`), Opciones de configuración fuertemente tipadas (`JwtOptions`, `S3Options`) y Seguridad.
+*   `Core/`: Entidades de dominio, Excepciones controladas del catálogo (`ValidationException`, `NotFoundException`, `ConflictException`, `UnauthorizedException`) e Interfaces de repositorio con soporte de `CancellationToken`. Cero dependencias externas.
+*   `Application/`: DTOs organizados por módulo, Casos de Uso (Servicios con interfaces e inyección de dependencias `I...Service`) y Validadores FluentValidation para cada payload.
+*   `Infrastructure/`: Repositorios EF Core, Contexto de Base de Datos (`NexodusDbContext`), Servicios de almacenamiento (`S3StorageService`), Opciones de configuración fuertemente tipadas (`JwtOptions`, `S3Options`), Servicios de IA y Seguridad.
 *   `API/`: Minimal APIs delgadas con metadatos OpenAPI (`.WithName()`, `.WithSummary()`, `.Produces<T>()`), Filtros de endpoint (`ValidationFilter<T>`), Extensiones de `ClaimsPrincipal` y Middleware de Excepciones Globales (`GlobalExceptionHandler`).
 
 ## Características Implementadas
 
 *   **Identificadores UUID:** Todas las entidades (Usuarios, Finanzas, Categorías, Rutinas, Ejercicios, etc.) utilizan `Guid` como identificadores únicos (`uuid` en Postgres).
+*   **Propagación de Cancelación (CancellationToken):** Todos los endpoints y repositorios aceptan y reenvían `CancellationToken`, abortando inmediatamente las consultas a la base de datos si el cliente cancela o desconecta la conexión.
 *   **Autenticación y Seguridad:** 
-    *   Registro y Login con validación automática.
+    *   Registro y Login con validación automática y contraseñas robustas.
     *   Generación de JWT y Refresh Tokens criptográficamente seguros.
-    *   Hasheo de contraseñas utilizando BCrypt.
-    *   Opciones fuertemente tipadas validadas (`JwtOptions`).
-*   **Manejo Global de Excepciones y ProblemDetails:** Middleware interceptor (`GlobalExceptionHandler`) que captura excepciones controladas de dominio y errores imprevistos, transformándolos en respuestas estandarizadas **RFC 7807 / RFC 9457 ProblemDetails** e integrando logging estructurado con `ILogger`.
-*   **Validación Transparente:** Integración de `ValidationFilter<T>` como filtro de Minimal API para ejecutar validaciones antes de invocar la lógica de negocio.
+    *   Cierre de sesión y revocación explícita de tokens (`POST /api/auth/logout`).
+    *   Protección contra ataques de fuerza bruta y abuso mediante **Rate Limiting** nativo de ASP.NET Core (`AuthPolicy` y `AiPolicy`).
+    *   Políticas **CORS** seguras con lista blanca de orígenes permitidos configurable (`ALLOWED_ORIGINS`).
+    *   Cabeceras de endurecimiento HTTP automáticas (`HSTS`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`).
+    *   Protección contra inyección de prompts en IA mediante delimitación semántica estricta (`<user_data>`, `<user_preferences>`).
+    *   Hasheo de contraseñas utilizando BCrypt con sal automática.
+    *   Opciones fuertemente tipadas validadas (`JwtOptions`, `S3Options`).
+*   **Manejo Global de Excepciones y ProblemDetails:** Middleware interceptor (`GlobalExceptionHandler`) que captura excepciones controladas de dominio y errores imprevistos, transformándolos en respuestas estandarizadas **RFC 7807 / RFC 9457 ProblemDetails** e integrando logging estructurado con `ILogger`. Nunca expone excepciones genéricas ni trazas de pila al cliente.
+*   **Validación Transparente y Uniforme:** Integración de `ValidationFilter<T>` en cada endpoint POST/PUT/PATCH para ejecutar validaciones FluentValidation antes de invocar la lógica de negocio.
 *   **Módulo de Finanzas (CRUD Completo):** Endpoints para transacciones y balance mensual. Compatible con tipos bilingües (`Income`/`Expense` e `Ingreso`/`Gasto`; `Tarjeta`/`Card` y `Efectivo`/`Cash`).
 *   **Módulo de Categorías (CRUD):** Categorías personalizadas por usuario para transacciones financieras.
 *   **Módulo de Tareas y Hábitos:** Gestión de tareas puntuales y hábitos recurrentes con seguimiento de rachas (`CurrentStreak`, `HighestStreak`).
+*   **Módulo Avanzado de Seguimiento de Hábitos y Heatmaps (`/api/habits`):**
+    *   Diseño y seguimiento de hábitos positivos (`Build`) y negativos a erradicar (`Quit`).
+    *   Múltiples tipos de registro: Binario (`YesNo`), Numérico (`Numeric`) y Temporizador (`Timer`).
+    *   Flexibilidad de frecuencias: Diaria (`Daily`), días específicos (`SpecificDays`), veces por período (`TimesPerPeriod`) o intervalos personalizados (`RepeatInterval`).
+    *   Sincronización y completado automático desde módulos del sistema (`Nexodus.Water`, `Nexodus.Gym`, `Nexodus.Diet`).
+    *   Visualización Heatmap anual (365 días), cuadrícula reciente de azulejos (60-90 días) y tendencias de consistencia semanales.
+    *   Recordatorios configurables por hora y día de semana.
+    *   Acciones táctiles rápidas (+1, valor exacto o toggle) y reordenamiento de tarjetas.
 *   **Módulo de Notas y Checklist:** Diario personal y notas con soporte para listas de verificación dinámicas.
-*   **Módulo de Ejercicios y Rutinas:** Catálogo paginado de más de 1,300 ejercicios con generación concurrente y optimizada de URLs pre-firmadas en S3, diseño de rutinas personalizadas y bitácora de entrenamientos.
+*   **Módulo de Ejercicios y Rutinas:** Catálogo paginado de más de 1,300 ejercicios con generación concurrente y optimizada de URLs pre-firmadas en S3, diseño de rutinas personalizadas (con indicador de origen `IsAiGenerated` para distinguir rutinas manuales vs. IA) y bitácora de entrenamientos.
+*   **Generador de Rutinas con IA (`POST /api/routines/ai/generate` y `POST /api/routines/ai/swap-exercise`):** Servicio `RoutineAiService` impulsado por Google Gemini con `AiPolicy` rate limiting, filtrado por equipamiento disponible y exclusión de máquinas específicas (`ExcludedExerciseIds`), reemplazo individual de ejercicios equivalentes, ejercicios de calentamiento específicos (`WarmupMinutes`, `WarmupExercisesJson`), cardio opcional en rutina, integración automática con recuperación muscular (`IWorkoutSessionService`) y validación estricta contra el catálogo real de `Exercises`.
+*   **Estiramientos y Plantillas de Solo Lectura (`GET /api/routines/stretching/templates`, `POST /api/routines/stretching/templates/{key}/clone`):** Seeder idempotente de 16 ejercicios de estiramiento (`DataSeeder.SeedStretchingExercisesAsync`) con la misma estructura de `Exercise` y 4 plantillas pre-estructuradas clonables como copias editables.
+*   **Módulo Exclusivo de Cardio (`/api/cardio/sessions`, `POST /api/cardio/ai/generate`):** Entidades `CardioSession` y `CardioSegment` para sesiones al aire libre o en gym con estados en vivo, modo Manual o GPS y generador de intervalos con IA (`CardioAiService`). Opcional y desacoplado de la racha de pesas.
+*   **Presupuesto de Comidas sincronizado con Finanzas (`GET /api/diet/budget-summary`):** Configuración de monto, periodicidad (`Weekly`, `Biweekly`, `Monthly`) y categoría de Finanzas vinculada en `DietTarget`, integrado con `RecipeAiService` (`MaxBudgetPerMeal`) para adaptar recetas económicas.
 *   **Módulo Avanzado de Sesiones de Entrenamiento (Gym / Workout Sessions):** 
     *   Sesiones en vivo en tiempo real con persistencia y reconexión transparente.
     *   Registro granular serie por serie (`Normal`, `Warmup`, `DropSet`, `Failure`, `Timed`).
@@ -43,6 +62,13 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     *   Motor de fatiga y recuperación muscular acumulativa por grupo muscular (pecho, espalda, hombros, piernas, brazos, core) basado en decaimiento exponencial en 48-72h.
     *   Cálculo automático de récords personales por ejercicio (Max Weight, Max Reps, Max 1RM, Max Volume).
     *   Consolidación de sesión con volumen neto (excluyendo calentamiento) y otorgamiento de Nexodus XP (NXP).
+*   **Módulo de Nutrición Inteligente, Chef IA & Nexodus Lens:**
+    *   **Nexodus Lens (Visión Multimodal con Google Gemini):** Reconocimiento inteligente de platos y alimentos a partir de una fotografía en base64, estimando platillo, ingredientes, gramajes aproximados, calorías y macronutrientes estructurados.
+    *   **Chef IA y Ajuste de Macros Restantes (`/api/recipes/ai/match-macros`):** Generación de recetas personalizadas calculadas para cuadrar con los macronutrientes restantes del día, desglosando ingredientes en gramos y pasos de cocina detallados.
+    *   **Modo Despensa ('Cocina con lo que tienes' - `/api/recipes/ai/pantry-cook`):** Sugerencia de recetas basadas en el inventario real de la despensa del usuario, calculando porcentaje de afinidad e identificando ingredientes faltantes.
+    *   **Sanitizador y Deserializador Resiliente de JSON para IA (`AiJsonSanitizer`):** Módulo tolerante a fallos que extrae estructuras JSON puras de respuestas de Gemini, corrige defectos sintácticos comunes de LLMs (unidades pegadas en números como `0.0IU`, `0.0g`, `250kcal`, comas omitidas, comentarios y números en strings) y captura errores mediante `ValidationException` controladas.
+    *   **Integración Global con Open Food Facts:** Búsqueda automática por código de barras comercial con fallback a la base de datos abierta global de Open Food Facts (sin costo ni API key, con caching automático en PostgreSQL).
+    *   **Balance Calórico Neto Dinámico:** Cálculo en tiempo real de calorías consumidas vs calorías quemadas en sesiones de entrenamiento (`NetCalories = ConsumedCalories - BurnedCalories`).
 
 ---
 
@@ -69,6 +95,12 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     ```json
     {
       "token": "string (JWT expirado)",
+      "refreshToken": "string"
+    }
+    ```
+*   `POST /api/auth/logout` - Revoca el Refresh Token y cierra la sesión del usuario.
+    ```json
+    {
       "refreshToken": "string"
     }
     ```
@@ -144,6 +176,45 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 *   `POST /api/todos/{id}/complete` - Marca una tarea o hábito como completado hoy (incrementa la racha).
 *   `POST /api/todos/{id}/uncompleted` - Desmarca una tarea o hábito completado hoy (restaura la racha anterior).
 *   `DELETE /api/todos/{id}` - Elimina la tarea o hábito.
+
+**Hábitos Avanzados y Heatmaps (`/api/habits`)** *(Requieren Autenticación JWT)*
+*   `GET /api/habits?includeArchived=false&recentDays=60` - Obtiene los hábitos del usuario con su cuadrícula de azulejos reciente y estado del día.
+*   `GET /api/habits/{id}?recentDays=60` - Obtiene el detalle de un hábito específico.
+*   `POST /api/habits` - Crea un hábito con meta, frecuencia, recordatorios y fuente de auto-completado.
+    ```json
+    {
+      "name": "Beber 2.5L de Agua",
+      "description": "Mantenerse hidratado durante el día laboral",
+      "icon": "water_drop",
+      "color": "#00E5FF",
+      "category": "Health",
+      "habitType": "Build", // "Build" o "Quit"
+      "trackingType": "Numeric", // "YesNo", "Numeric", "Timer"
+      "targetValue": 2500,
+      "targetUnit": "ml",
+      "onTapAction": "ToggleOrAddOne",
+      "frequencyType": "Daily", // "Daily", "SpecificDays", "TimesPerPeriod", "RepeatInterval"
+      "streakUnit": "Days",
+      "autoCompleteSource": "Nexodus.Water",
+      "reminders": [
+        { "time": "09:00", "daysOfWeek": "Monday,Tuesday,Wednesday,Thursday,Friday", "isEnabled": true }
+      ]
+    }
+    ```
+*   `PUT /api/habits/{id}` - Actualiza la configuración, colores o metas de un hábito.
+*   `POST /api/habits/{id}/check-in` - Registro táctil rápido (+1, cantidad exacta o toggle).
+    ```json
+    {
+      "date": "2026-11-16",
+      "action": "AddAmount",
+      "amount": 500,
+      "note": "Botella de agua después de entrenar"
+    }
+    ```
+*   `GET /api/habits/{id}/history?days=90` - Historial cronológico de azulejos para renderizar la cuadrícula interactiva.
+*   `GET /api/habits/{id}/stats` - Estadísticas avanzadas, racha actual, mejor racha, tendencias semanales y mapa de 365 días.
+*   `POST /api/habits/reorder` - Reordena los hábitos del usuario en la pantalla principal.
+*   `DELETE /api/habits/{id}` - Elimina permanentemente un hábito y su historial.
 
 **Notas y Diario (`/api/notes`)** *(Requieren Autenticación JWT)*
 *   `GET /api/notes/` - Obtiene todas las notas del usuario.
@@ -246,14 +317,23 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     *   `PUT /api/diet/target` - Actualiza manualmente calorías, macros (proteína, carbs, grasas), agua y protocolo de ayuno.
     *   `POST /api/diet/calculate-target` - Calcula TDEE y recomendación de macros según peso, altura, edad, sexo biológico, nivel de actividad y objetivo (`Cut`, `Maintenance`, `Bulk`).
 *   **Comidas y Resumen Diario:**
-    *   `GET /api/diet/daily?date=yyyy-MM-dd` - Obtiene resumen diario consolidado (totales de calorías, macros, agua, comidas agrupadas por tipo y metas activas).
+    *   `GET /api/diet/daily?date=yyyy-MM-dd` - Obtiene resumen diario consolidado: totales de calorías consumidas, calorías quemadas en entrenamientos, balance calórico neto (`NetCalories`), macros, agua, comidas agrupadas por tipo y metas activas.
     *   `POST /api/diet/meals` - Registra una comida con sus ingredientes (`Items`).
     *   `PUT /api/diet/meals/{id}` - Modifica alimentos, cantidades o marca la comida como completada.
     *   `DELETE /api/diet/meals/{id}` - Elimina una comida del registro diario.
-*   **Catálogo de Alimentos:**
+*   **Catálogo de Alimentos & Open Food Facts:**
     *   `GET /api/diet/foods/search?query=pechuga&page=1&pageSize=20` - Búsqueda paginada de alimentos por nombre o marca.
-    *   `GET /api/diet/foods/barcode/{barcode}` - Búsqueda instantánea por código de barras (EAN/UPC).
+    *   `GET /api/diet/foods/barcode/{barcode}` - Búsqueda instantánea por código de barras (EAN/UPC). Si el producto no existe localmente, consulta automáticamente la base de datos abierta global de **Open Food Facts** y lo guarda en caché local.
     *   `POST /api/diet/foods` - Crea un alimento personalizado con sus valores nutricionales por porción.
+*   **Nexodus Lens (Visión Artificial Multimodal con Google Gemini):**
+    *   `POST /api/diet/lens/analyze` - Analiza una fotografía de comida en base64 para detectar ingredientes, gramajes estimados, calorías y macronutrientes.
+        ```json
+        {
+          "base64Image": "<string_base64_sin_prefijo_o_con_data_uri>",
+          "mimeType": "image/jpeg",
+          "additionalContext": "Pechuga asada con arroz integral (opcional)"
+        }
+        ```
 *   **Hidratación:**
     *   `GET /api/diet/water?date=yyyy-MM-dd` - Retorna los mililitros consumidos en la fecha y el porcentaje alcanzado.
     *   `POST /api/diet/water` - Suma una ingesta rápida de agua (ej. +250 ml o +500 ml).
@@ -262,6 +342,31 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     *   `GET /api/diet/fasting/status` - Estado en vivo del ayuno (horas transcurridas, restantes, % de progreso y hora estimada de finalización).
     *   `POST /api/diet/fasting/start` - Inicia una sesión de ayuno con protocolo (ej. `16:8`) y horas objetivo.
     *   `POST /api/diet/fasting/stop` - Concluye la sesión de ayuno activa y abre la ventana de ingesta.
+
+**Recetas y Chef IA (`/api/recipes`)** *(Requieren Autenticación JWT)*
+*   `GET /api/recipes` - Busca recetas con filtros por `query`, `mealType`, `dietType`, recetas comunitarias o propias, con paginación.
+*   `GET /api/recipes/{id}` - Obtiene el detalle completo de una receta incluyendo ingredientes y pasos.
+*   `GET /api/recipes/{id}/variants` - Obtiene las variantes derivadas de una receta base.
+*   `POST /api/recipes` - Crea una receta propia o comunitaria con validación estricta de ingredientes y pasos.
+*   `POST /api/recipes/{id}/variants` - Crea una variante derivada vinculada a la receta original.
+*   `POST /api/recipes/log` - Registra una receta completa en el diario de comidas, desglosando cada ingrediente atómico para edición libre.
+*   `POST /api/recipes/ai/match-macros` - Genera mediante IA una receta equilibrada para cubrir exactamente los macros restantes del día.
+*   `POST /api/recipes/ai/pantry-cook` - Sugiere recetas optimizadas utilizando los ingredientes disponibles en la despensa del usuario.
+*   `PUT /api/recipes/{id}` - Actualiza una receta propia.
+*   `DELETE /api/recipes/{id}` - Elimina una receta propia.
+
+**Despensa del Usuario (`/api/pantry`)** *(Requieren Autenticación JWT)*
+*   `GET /api/pantry` - Lista los ingredientes disponibles en la despensa con categoría y fecha de expiración.
+*   `POST /api/pantry` - Añade un nuevo ingrediente a la despensa.
+*   `POST /api/pantry/bulk` - Añade múltiples ingredientes en lote a la despensa.
+*   `PUT /api/pantry/{id}` - Actualiza la cantidad, unidad o fecha de expiración de un ingrediente.
+*   `DELETE /api/pantry/{id}` - Elimina un ingrediente de la despensa.
+
+**Gamificación y Cyber Vault (`/api/gamification`)** *(Requieren Autenticación JWT)*
+*   `GET /api/gamification/status` - Consulta el rango Obsidian, NXP acumulado, racha actual, días de descanso y saldo de Cyphers.
+*   `PUT /api/gamification/rest-days` - Configura los días de descanso programado para proteger la racha.
+*   `POST /api/gamification/streak/restore` - Restaura una racha perdida utilizando Cyphers o un Escudo de Racha disponible.
+*   `POST /api/gamification/vault/buy-freeze` - Adquiere un Escudo de Racha adicional en el Cyber Vault usando Cyphers.
 
 ---
 
@@ -273,6 +378,29 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
     cp .env.example .env
     ```
     Configura tus credenciales de base de datos PostgreSQL, configuración JWT y **credenciales S3 (AWS SDK / MinIO)** dentro del `.env`.
+
+### Cómo Obtener y Configurar tu Google Gemini API Key (Chef IA & Nexodus Lens)
+
+Nexodus Lens y el Chef IA utilizan el modelo `gemini-3.8-flash` (con respaldo a `gemini-3.5-flash-lite`) para la generación y reconocimiento inteligente de recetas y platos. Para activarlo:
+
+1. **Entrar a Google AI Studio:**
+   - Dirígete a [Google AI Studio](https://aistudio.google.com/).
+   - Inicia sesión con tu cuenta de Google.
+2. **Generar la API Key:**
+   - En el menú lateral o superior, haz clic en **"Get API key"** (o "Crear clave de API").
+   - Selecciona **"Create API key in new project"** (o en un proyecto de Google Cloud existente).
+   - Copia la clave alfanumérica generada (ej. `AIzaSy...`).
+3. **Configurarla en tu archivo `.env`:**
+   - Abre tu archivo `.env` en la raíz de `Nexodus-Back` y añade:
+     ```env
+     GEMINI_API_KEY=AIzaSyTuClaveDeApiAqui
+     GEMINI_MODEL=gemini-3.8-flash
+     ```
+   *Nota: La capa gratuita de Google AI Studio ofrece miles de peticiones mensuales sin costo. Si la variable no está configurada, el endpoint retornará una respuesta ProblemDetails explicativa indicando cómo habilitarla.*
+
+### Open Food Facts (Códigos de Barras)
+
+La integración con **Open Food Facts** no requiere ninguna API key ni registro previo. Se comunica de forma nativa con la API global v2 identificándose con la cabecera `User-Agent: Nexodus-Nutrition/1.0 (contact@nexodus.app)`. Al escanear un código de barras nuevo, el backend lo descarga de Open Food Facts y lo persiste en la base de datos PostgreSQL local para acelerar todas las consultas futuras.
 
 2.  **Migraciones de Base de Datos y Seed:**
     Para aplicar las migraciones de Entity Framework Core:
@@ -291,3 +419,31 @@ El proyecto sigue estrictamente los principios de **Clean Architecture**:
 ## Docker
 
 El proyecto incluye un `Dockerfile` optimizado y un `.dockerignore` para construir la imagen eficientemente utilizando un build multietapa (SDK 10.0 y ASP.NET 10.0 runtime).
+
+
+---
+
+## The Nexodus Protocol: Motor de Gamificación y Rachas Inteligentes (Fase 5)
+
+El backend incorpora el motor central de retención y consistencia bajo la arquitectura Obsidian Cyan:
+
+### 1. Modelo de Rachas Inteligentes (`UserGamification`)
+- **Protección de Días de Descanso (`ScheduledRestDays`):** Configuración de días de descanso activo (ej. `Saturday,Sunday`). Si no hay actividad en estos días, la racha permanece protegida y no se rompe.
+- **Ventana de Gracia de 24 horas (`StreakGracePeriodExpiresAt`):** Tras un día perdido, se otorga una ventana de gracia para entrenar o registrar nutrición y recuperar la racha sin penalización.
+- **Escudos de Racha (`StreakFreezesAvailable`):** Consumibles automáticos que absorben un olvido si la ventana de gracia expira.
+
+### 2. Rangos Obsidian y Economía de Cyphers
+- **Jerarquía de Rangos (Obsidian Tiers):**
+  1. `Initiate` (0 - 499 NXP)
+  2. `Vanguard` (500 - 1,499 NXP)
+  3. `Cyber` (1,500 - 2,999 NXP)
+  4. `Titan` (3,000 - 4,999 NXP)
+  5. `Apex` (5,000 - 7,499 NXP)
+  6. `Sovereign` (7,500 - 9,999 NXP)
+  7. `Obsidian` (10,000+ NXP - Rango Supremo)
+- **Reglas de Obtención de NXP:**
+  - `+50 NXP` base por entrenamiento completado `+ 1 NXP` por cada 100 kg de volumen total levantado.
+  - Multiplicador de racha dinámico: hasta `5x` en racha sostenida.
+- **Divisa Cyphers y Cyber Vault:**
+  - Recompensas por ascenso de rango (+50 Cyphers) e hitos semanales (+20 Cyphers).
+  - Canje de Escudos de Racha (`POST /api/gamification/vault/buy-freeze`) y restauración de disciplina (`POST /api/gamification/streak/restore`).
